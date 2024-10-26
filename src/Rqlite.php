@@ -10,6 +10,8 @@ use Kami\Rqlite\Result\AssociativeQueryResult;
 
 final class Rqlite
 {
+    private ?ReadConsistencyLevel $readConsistencyLevel = null;
+
     public function __construct(private readonly Adapter $httpAdapter)
     {
     }
@@ -19,10 +21,11 @@ final class Rqlite
         $response = $this->httpAdapter->post('/db/query', $queries, [
             'timings' => $timings,
             'associative' => true,
+            'level' => $this->readConsistencyLevel ? $this->readConsistencyLevel->value : false,
         ]);
 
         $queryResults = [];
-        $obj = json_decode($response->getBody()->getContents(), true);
+        $obj = json_decode($response, true);
         foreach ($obj['results'] as $result) {
             $queryResults[] = new AssociativeQueryResult(
                 $result['types'],
@@ -37,15 +40,17 @@ final class Rqlite
         );
     }
 
-    public function execute(array $queries, bool $timings = false): Results
+    public function execute(array $queries, bool $timings = false, ?int $timeoutInSeconds = null): Results
     {
         $response = $this->httpAdapter->post('/db/execute', $queries, [
             'timings' => $timings,
             'associative' => true,
+            'db_timeout' => $timeoutInSeconds ? $timeoutInSeconds . 's' : null,
+            'level' => $this->readConsistencyLevel ? $this->readConsistencyLevel->value : false,
         ]);
 
         $queryResults = [];
-        $obj = json_decode($response->getBody()->getContents(), true);
+        $obj = json_decode($response, true);
         foreach ($obj['results'] as $result) {
             $queryResults[] = new ExecuteResult(
                 error: $result['error'] ?? null,
@@ -61,8 +66,10 @@ final class Rqlite
         );
     }
 
-    public function setConsistency(string $consistency)
+    public function setConsistency(?ReadConsistencyLevel $consistency): self
     {
-        
+        $this->readConsistencyLevel = $consistency;
+
+        return $this;
     }
 }

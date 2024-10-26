@@ -6,7 +6,6 @@ namespace Kami\Rqlite\Adapters;
 
 use Kami\Rqlite\Adapter;
 use GuzzleHttp\ClientInterface;
-use Psr\Http\Message\ResponseInterface;
 
 class Guzzle implements Adapter
 {
@@ -14,11 +13,13 @@ class Guzzle implements Adapter
     {
     }
 
-    public function post(string $uri, array $body = [], array $query = []): ResponseInterface
+    public function post(string $uri, array $body = [], array $query = []): string
     {
-        return $this->client->request('POST', $uri, [
+        $response = $this->client->request('POST', $uri, [
             'json' => $body,
             'query' => $query,
         ]);
+
+        return $response->getBody()->getContents();
     }
 }
