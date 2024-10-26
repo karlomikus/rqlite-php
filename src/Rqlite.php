@@ -16,6 +16,13 @@ final class Rqlite
     {
     }
 
+    /**
+     * Run a query via query endpoint
+     *
+     * @param array<mixed> $queries One or more queries
+     * @param bool $timings Whether to include timings in the response
+     * @return Results
+     */
     public function query(array $queries, bool $timings = true): Results
     {
         $response = $this->httpAdapter->post('/db/query', $queries, [
@@ -25,7 +32,8 @@ final class Rqlite
         ]);
 
         $queryResults = [];
-        $obj = json_decode($response, true);
+        $obj = json_decode($response, true, flags: JSON_THROW_ON_ERROR);
+
         foreach ($obj['results'] as $result) {
             $queryResults[] = new AssociativeQueryResult(
                 $result['types'],
@@ -40,6 +48,14 @@ final class Rqlite
         );
     }
 
+    /**
+     * Run a query via execute endpoint
+     *
+     * @param array<mixed> $queries One or more queries
+     * @param bool $timings Whether to include timings in the response
+     * @param int|null $timeoutInSeconds Timeout in seconds
+     * @return Results
+     */
     public function execute(array $queries, bool $timings = false, ?int $timeoutInSeconds = null): Results
     {
         $response = $this->httpAdapter->post('/db/execute', $queries, [
@@ -50,7 +66,8 @@ final class Rqlite
         ]);
 
         $queryResults = [];
-        $obj = json_decode($response, true);
+        $obj = json_decode($response, true, flags: JSON_THROW_ON_ERROR);
+
         foreach ($obj['results'] as $result) {
             $queryResults[] = new ExecuteResult(
                 error: $result['error'] ?? null,

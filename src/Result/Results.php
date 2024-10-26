@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Kami\Rqlite\Result;
 
+/**
+ * Collection of results from a query run
+ */
 readonly class Results
 {
     /**
