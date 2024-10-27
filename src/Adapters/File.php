@@ -29,4 +29,16 @@ class File implements Adapter
 
         return $out === false ? '' : (string) $out;
     }
+
+    public function get(string $uri, array $query = []): string
+    {
+        $url = $this->baseUrl . $uri;
+        if (count($query) > 0) {
+            $url .= '?' . http_build_query($query);
+        }
+
+        $out = file_get_contents($url, false);
+
+        return $out === false ? '' : (string) $out;
+    }
 }

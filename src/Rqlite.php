@@ -10,8 +10,6 @@ use Kami\Rqlite\Result\AssociativeQueryResult;
 
 final class Rqlite
 {
-    private ?ReadConsistencyLevel $readConsistencyLevel = null;
-
     public function __construct(private readonly Adapter $httpAdapter)
     {
     }
@@ -23,12 +21,12 @@ final class Rqlite
      * @param bool $timings Whether to include timings in the response
      * @return Results
      */
-    public function query(array $queries, bool $timings = true): Results
+    public function query(array $queries, bool $timings = true, ?ReadConsistencyLevel $readConsistencyLevel = null): Results
     {
         $response = $this->httpAdapter->post('/db/query', $queries, [
             'timings' => $timings,
             'associative' => true,
-            'level' => $this->readConsistencyLevel ? $this->readConsistencyLevel->value : false,
+            'level' => $readConsistencyLevel ? $readConsistencyLevel->value : null,
         ]);
 
         $queryResults = [];
@@ -56,13 +54,13 @@ final class Rqlite
      * @param int|null $timeoutInSeconds Timeout in seconds
      * @return Results
      */
-    public function execute(array $queries, bool $timings = false, ?int $timeoutInSeconds = null): Results
+    public function execute(array $queries, bool $timings = false, ?int $timeoutInSeconds = null, bool $withTransaction = false): Results
     {
         $response = $this->httpAdapter->post('/db/execute', $queries, [
             'timings' => $timings,
             'associative' => true,
             'db_timeout' => $timeoutInSeconds ? $timeoutInSeconds . 's' : null,
-            'level' => $this->readConsistencyLevel ? $this->readConsistencyLevel->value : false,
+            'transaction' => $withTransaction ? true : null,
         ]);
 
         $queryResults = [];
@@ -83,10 +81,17 @@ final class Rqlite
         );
     }
 
-    public function setConsistency(?ReadConsistencyLevel $consistency): self
+    /**
+     * Get the status of the rqlite server
+     *
+     * @return array<mixed>
+     */
+    public function status(): array
     {
-        $this->readConsistencyLevel = $consistency;
+        $response = $this->httpAdapter->get('/status');
 
-        return $this;
+        $obj = json_decode($response, true, flags: JSON_THROW_ON_ERROR);
+
+        return $obj;
     }
 }

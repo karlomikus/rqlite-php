@@ -22,4 +22,13 @@ class Guzzle implements Adapter
 
         return $response->getBody()->getContents();
     }
+
+    public function get(string $uri, array $query = []): string
+    {
+        $response = $this->client->request('GET', $uri, [
+            'query' => $query,
+        ]);
+
+        return $response->getBody()->getContents();
+    }
 }

@@ -7,7 +7,7 @@ namespace Kami\Rqlite;
 interface Adapter
 {
     /**
-     * Get POST response body as a string
+     * Return POST response body as a string
      *
      * @param string $uri URI of the request
      * @param array<mixed> $body POST body
@@ -15,4 +15,13 @@ interface Adapter
      * @return string Response body
      */
     public function post(string $uri, array $body = [], array $query = []): string;
+
+    /**
+     * Return GET response body as a string
+     *
+     * @param string $uri URI of the request
+     * @param array<mixed> $query Query string parameters
+     * @return string Response body
+     */
+    public function get(string $uri, array $query = []): string;
 }

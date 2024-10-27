@@ -22,4 +22,13 @@ class LoggerAdapter implements Adapter
 
         return $this->baseAdapter->post($uri, $body, $query);
     }
+
+    public function get(string $uri, array $query = []): string
+    {
+        $this->logger->info($uri, [
+            'query' => $query,
+        ]);
+
+        return $this->baseAdapter->get($uri, $query);
+    }
 }
