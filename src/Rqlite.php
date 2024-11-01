@@ -36,13 +36,13 @@ final class Rqlite
             $queryResults[] = new AssociativeQueryResult(
                 $result['types'],
                 $result['rows'],
-                $result['time'],
+                $result['time'] ? (float) $result['time'] : null,
             );
         }
 
         return new Results(
             results: $queryResults,
-            time: $obj['time'],
+            time: $obj['time'] ? (float) $obj['time'] : null,
         );
     }
 
