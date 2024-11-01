@@ -7,12 +7,12 @@ namespace Kami\Rqlite\Result;
 /**
  * Collection of results from a query run
  */
-readonly class Results
+final class Results
 {
     /**
      * @param array<AssociativeQueryResult|ExecuteResult> $results
      */
-    public function __construct(public array $results = [], public ?float $time = null)
+    public function __construct(public readonly array $results = [], public readonly ?float $time = null)
     {
     }
 }

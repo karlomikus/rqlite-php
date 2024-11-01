@@ -6,9 +6,10 @@ namespace Kami\Rqlite;
 
 use Kami\Rqlite\Result\Results;
 use Kami\Rqlite\Result\ExecuteResult;
+use Kami\Rqlite\Exception\RqliteException;
 use Kami\Rqlite\Result\AssociativeQueryResult;
 
-final class Rqlite
+class Rqlite
 {
     public function __construct(private readonly Adapter $httpAdapter)
     {
@@ -33,10 +34,14 @@ final class Rqlite
         $obj = json_decode($response, true, flags: JSON_THROW_ON_ERROR);
 
         foreach ($obj['results'] as $result) {
+            if ($result['error'] ?? null) {
+                throw new RqliteException($result['error']);
+            }
+
             $queryResults[] = new AssociativeQueryResult(
-                $result['types'],
-                $result['rows'],
-                $result['time'] ? (float) $result['time'] : null,
+                types: $result['types'],
+                rows: $result['rows'],
+                time: $result['time'] ? (float) $result['time'] : null,
             );
         }
 
@@ -67,17 +72,20 @@ final class Rqlite
         $obj = json_decode($response, true, flags: JSON_THROW_ON_ERROR);
 
         foreach ($obj['results'] as $result) {
+            if ($result['error'] ?? null) {
+                throw new RqliteException($result['error']);
+            }
+
             $queryResults[] = new ExecuteResult(
-                error: $result['error'] ?? null,
                 lastInsertId: $result['last_insert_id'] ?? null,
-                rowsAffected: $result['rows_affected'] ?? null,
-                time: $result['time'] ?? null,
+                rowsAffected: $result['rows_affected'] ? (int) $result['rows_affected'] : null,
+                time: $result['time'] ? (float) $result['time'] : null,
             );
         }
 
         return new Results(
             results: $queryResults,
-            time: $obj['time'],
+            time: $obj['time'] ? (float) $obj['time'] : null,
         );
     }
 

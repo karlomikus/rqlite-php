@@ -7,13 +7,12 @@ namespace Kami\Rqlite\Result;
 /**
  * Result of a query run via the execute endpoint
  */
-final readonly class ExecuteResult
+final class ExecuteResult
 {
     public function __construct(
-        public ?string $error = null,
-        public ?int $lastInsertId = null,
-        public ?int $rowsAffected = null,
-        public ?float $time = null,
+        public readonly mixed $lastInsertId = null,
+        public readonly ?int $rowsAffected = null,
+        public readonly ?float $time = null,
     ) {
     }
 }
