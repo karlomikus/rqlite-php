@@ -1,6 +1,6 @@
 # PHP Client for Rqlite
 
-A basic rqlite for PHP. Supports multiple HTTP adapters (Curl, Guzzle, Basic PHP file stream). Returns strongly typed results. Rqlite is a lightweight, distributed relational database, which uses SQLite as its storage engine.
+A basic rqlite client for PHP. Supports multiple HTTP adapters (Curl, Guzzle, Basic PHP file stream). Returns strongly typed results. [Rqlite](https://rqlite.io) is a lightweight, distributed relational database, which uses SQLite as its storage engine.
 
 ## Installation
 
