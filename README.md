@@ -1,6 +1,6 @@
 # PHP Client for Rqlite
 
-WIP
+A basic rqlite for PHP. Supports multiple HTTP adapters (Curl, Guzzle, Basic PHP file stream). Returns strongly typed results. Rqlite is a lightweight, distributed relational database, which uses SQLite as its storage engine.
 
 ## Installation
 
@@ -16,18 +16,20 @@ composer require karlomikus/rqlite
 use Kami\Rqlite\Rqlite;
 use Kami\Rqlite\Adapters\Curl;
 
-// 1. Create a http adapter and point it to your rqlite server, curl and guzzle are provided
+// Create a http adapter and point it to your rqlite server
+// You can create your own adapter by implementing the Adapter interface
 $curlAdapter = new Curl('http://localhost:4001');
 
-// 2. Create a Rqlite client instance
+// Create a Rqlite client instance and pass the adapter as a constructor argument
 $rqlite = new Rqlite($curlAdapter);
 
-// 3. Run queries
+// Run your SQL queries
+// Supports status(), query() and execute() endpoints
 $result = $rqlite->query([
     'SELECT * FROM foo',
 ]);
 
-// 4. Inspect the result
-// $result is an instance of either Kami\Rqlite\Result\ExecuteResult or Kami\Rqlite\Result\AssociativeQueryResult
+// Get the results
+// By default the results from query endpoint are fetch as associative arrays
 var_dump($result);
 ```

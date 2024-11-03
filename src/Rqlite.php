@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Kami\Rqlite;
 
+use Throwable;
 use Kami\Rqlite\Result\Results;
 use Kami\Rqlite\Result\ExecuteResult;
+use Kami\Rqlite\Exception\ClientException;
 use Kami\Rqlite\Exception\RqliteException;
 use Kami\Rqlite\Result\AssociativeQueryResult;
 
@@ -24,11 +26,15 @@ class Rqlite
      */
     public function query(array $queries, bool $timings = true, ?ReadConsistencyLevel $readConsistencyLevel = null): Results
     {
-        $response = $this->httpAdapter->post('/db/query', $queries, [
-            'timings' => $timings,
-            'associative' => true,
-            'level' => $readConsistencyLevel ? $readConsistencyLevel->value : null,
-        ]);
+        try {
+            $response = $this->httpAdapter->post('/db/query', $queries, [
+                'timings' => $timings,
+                'associative' => true,
+                'level' => $readConsistencyLevel ? $readConsistencyLevel->value : null,
+            ]);
+        } catch (Throwable $e) {
+            throw new ClientException($e->getMessage(), $e->getCode(), $e);
+        }
 
         $queryResults = [];
         $obj = json_decode($response, true, flags: JSON_THROW_ON_ERROR);
@@ -61,12 +67,16 @@ class Rqlite
      */
     public function execute(array $queries, bool $timings = false, ?int $timeoutInSeconds = null, bool $withTransaction = false): Results
     {
-        $response = $this->httpAdapter->post('/db/execute', $queries, [
-            'timings' => $timings,
-            'associative' => true,
-            'db_timeout' => $timeoutInSeconds ? $timeoutInSeconds . 's' : null,
-            'transaction' => $withTransaction ? true : null,
-        ]);
+        try {
+            $response = $this->httpAdapter->post('/db/execute', $queries, [
+                'timings' => $timings,
+                'associative' => true,
+                'db_timeout' => $timeoutInSeconds ? $timeoutInSeconds . 's' : null,
+                'transaction' => $withTransaction ? true : null,
+            ]);
+        } catch (Throwable $e) {
+            throw new ClientException($e->getMessage(), $e->getCode(), $e);
+        }
 
         $queryResults = [];
         $obj = json_decode($response, true, flags: JSON_THROW_ON_ERROR);
