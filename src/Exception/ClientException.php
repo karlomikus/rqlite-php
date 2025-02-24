@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Kami\Rqlite\Exception;
 
-use RuntimeException;
+use Exception;
 
-class ClientException extends RuntimeException
+/**
+ * Thrown when the adapter can not get a response from rqlite
+ */
+class ClientException extends Exception
 {
 }

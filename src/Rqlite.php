@@ -10,8 +10,8 @@ use Kami\Rqlite\Result\Results;
 use Kami\Rqlite\Result\ExecuteResult;
 use Kami\Rqlite\Exception\ClientException;
 use Kami\Rqlite\Exception\RqliteException;
+use Kami\Rqlite\Exception\JsonDecodeException;
 use Kami\Rqlite\Result\AssociativeQueryResult;
-use Kami\Rqlite\Exception\RqliteResponseException;
 
 class Rqlite
 {
@@ -43,7 +43,7 @@ class Rqlite
 
         foreach ($obj['results'] as $result) {
             if ($result['error'] ?? null) {
-                throw new RqliteException($result['error']);
+                throw new RqliteException($result['error'], $queries);
             }
 
             $queryResults[] = new AssociativeQueryResult(
@@ -86,7 +86,7 @@ class Rqlite
 
         foreach ($obj['results'] as $result) {
             if ($result['error'] ?? null) {
-                throw new RqliteException($result['error']);
+                throw new RqliteException($result['error'], $queries);
             }
 
             $queryResults[] = new ExecuteResult(
@@ -124,7 +124,7 @@ class Rqlite
         try {
             return json_decode($response, true, flags: JSON_THROW_ON_ERROR);
         } catch (JsonException) {
-            throw new RqliteResponseException('Uprocessable response from rqlite: ' . $response);
+            throw (new JsonDecodeException('Unable to decode response from rqlite'))->setResponse($response);
         }
     }
 }
