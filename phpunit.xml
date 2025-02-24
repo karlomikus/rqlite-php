@@ -14,4 +14,7 @@
             <directory suffix=".php">./src</directory>
         </include>
     </source>
+    <php>
+        <env name="DB_URL" value="http://localhost:4001"/>
+    </php>
 </phpunit>

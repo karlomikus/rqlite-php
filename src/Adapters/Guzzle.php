@@ -7,8 +7,11 @@ namespace Kami\Rqlite\Adapters;
 use Kami\Rqlite\Adapter;
 use GuzzleHttp\ClientInterface;
 
-class Guzzle implements Adapter
+final class Guzzle implements Adapter
 {
+    /**
+     * Create adapter that uses Guzzle to make requests
+     */
     public function __construct(private readonly ClientInterface $client)
     {
     }

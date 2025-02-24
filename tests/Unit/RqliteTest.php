@@ -9,7 +9,7 @@ use Kami\Rqlite\Exception\RqliteException;
 use Kami\Rqlite\Result\AssociativeQueryResult;
 
 describe('Query', function () {
-    it('can create simple query', function () {
+    it('creates AssociativeQueryResult', function () {
         $adapter = Mockery::mock(Adapter::class);
         $adapter->shouldReceive('post')->once()->andReturn('{"results":[{"types":["int","varchar"],"rows":[[1,"foo"]],"time":"0.001"}],"time":"0.001"}');
 
@@ -22,7 +22,7 @@ describe('Query', function () {
         expect($result->results[0]->rows)->toBeArray()->toHaveCount(1);
     });
 
-    it('will throw exception on error', function () {
+    it('throws on error', function () {
         $adapter = Mockery::mock(Adapter::class);
         $adapter->shouldReceive('post')->once()->andReturn('{"results":[{"error":"rqlite error happened"}],"time":"0.001"}');
 
@@ -32,7 +32,7 @@ describe('Query', function () {
 });
 
 describe('Execute', function () {
-    it('can execute query', function () {
+    it('creates ExecuteResult', function () {
         $adapter = Mockery::mock(Adapter::class);
         $adapter->shouldReceive('post')->once()->andReturn('{"results":[{"last_insert_id":1,"rows_affected":1,"time":"0.00886"}],"time":"0.0152"}');
 

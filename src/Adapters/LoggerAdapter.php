@@ -7,8 +7,11 @@ namespace Kami\Rqlite\Adapters;
 use Kami\Rqlite\Adapter;
 use Psr\Log\LoggerInterface;
 
-class LoggerAdapter implements Adapter
+final class LoggerAdapter implements Adapter
 {
+    /**
+     * Create adapter decorator that logs all requests to the base adapter
+     */
     public function __construct(private readonly Adapter $baseAdapter, private readonly LoggerInterface $logger)
     {
     }

@@ -6,8 +6,11 @@ namespace Kami\Rqlite\Adapters;
 
 use Kami\Rqlite\Adapter;
 
-class File implements Adapter
+final class File implements Adapter
 {
+    /**
+     * Create adapter that uses file_get_contents to make requests
+     */
     public function __construct(private readonly string $baseUrl)
     {
     }
