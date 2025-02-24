@@ -8,6 +8,9 @@ use Kami\Rqlite\Adapter;
 
 class Curl implements Adapter
 {
+    /**
+     * Create adapter that uses curl to make requests
+     */
     public function __construct(private readonly string $baseUrl)
     {
     }

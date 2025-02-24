@@ -19,5 +19,7 @@ jobs:
     - uses: actions/checkout@v4
     - name: Install Dependencies
       run: composer install --dev
+    - name: Rqlite docker setup
+      run: docker run -d -p 4001:4001 rqlite/rqlite:latest rqlite
     - name: Execute tests
       run: vendor/bin/pest

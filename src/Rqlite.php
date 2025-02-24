@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Kami\Rqlite;
 
 use Throwable;
+use JsonException;
 use Kami\Rqlite\Result\Results;
 use Kami\Rqlite\Result\ExecuteResult;
 use Kami\Rqlite\Exception\ClientException;
 use Kami\Rqlite\Exception\RqliteException;
 use Kami\Rqlite\Result\AssociativeQueryResult;
+use Kami\Rqlite\Exception\RqliteResponseException;
 
 class Rqlite
 {
@@ -37,7 +39,7 @@ class Rqlite
         }
 
         $queryResults = [];
-        $obj = json_decode($response, true, flags: JSON_THROW_ON_ERROR);
+        $obj = $this->parseResponse($response);
 
         foreach ($obj['results'] as $result) {
             if ($result['error'] ?? null) {
@@ -79,7 +81,8 @@ class Rqlite
         }
 
         $queryResults = [];
-        $obj = json_decode($response, true, flags: JSON_THROW_ON_ERROR);
+
+        $obj = $this->parseResponse($response);
 
         foreach ($obj['results'] as $result) {
             if ($result['error'] ?? null) {
@@ -108,8 +111,20 @@ class Rqlite
     {
         $response = $this->httpAdapter->get('/status');
 
-        $obj = json_decode($response, true, flags: JSON_THROW_ON_ERROR);
+        $obj = $this->parseResponse($response);
 
         return $obj;
+    }
+
+    /**
+     * @return array<mixed>
+     */
+    private function parseResponse(string $response): array
+    {
+        try {
+            return json_decode($response, true, flags: JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            throw new RqliteResponseException('Uprocessable response from rqlite: ' . $response);
+        }
     }
 }
