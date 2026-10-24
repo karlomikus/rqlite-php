@@ -6,24 +6,6 @@ use Kami\Rqlite\QueryOptions;
 use Kami\Rqlite\Rqlite;
 use Kami\Rqlite\Result\AssociativeQueryResult;
 
-/*
-|--------------------------------------------------------------------------
-| Query integration test
-|--------------------------------------------------------------------------
-|
-| Mirrors the scenarios covered by Test_Query in the Go HTTP client's
-| http_test.go, run against the real cluster defined in docker-compose.yml.
-| The PHP client always requests associative results, so assertions use the
-| types/rows form rather than columns/values.
-|
-|     docker compose run --rm php vendor/bin/pest --group=integration
-|
-| When running the test outside the PHP container, override the node URL:
-|
-|     RQLITE_URL=http://localhost:4001 vendor/bin/pest --group=integration
-|
-*/
-
 function query_test_seed(Rqlite $rqlite, string $table): void
 {
     integration_execute($rqlite, [
@@ -103,7 +85,7 @@ it('executes a SELECT query with raft_index enabled', function () {
     try {
         query_test_seed($rqlite, $table);
 
-        // Results does not expose raft_index yet (see GO_CLIENT_PARITY.md, P1-5),
+        // Results does not expose raft_index yet
         // so verify the request succeeds and returns the expected rows.
         $query = integration_query(
             $rqlite,
