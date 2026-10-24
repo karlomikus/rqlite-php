@@ -50,5 +50,15 @@ All client exceptions extend `Kami\Rqlite\Exception\RqliteException`:
 
 - `TransportException` — the request could not be completed (connection failure, timeout, etc.).
 - `HttpException` — rqlite returned a non-2xx response. The response is available as `$exception->response`.
-- `StatementException` — rqlite reported an error for a specific SQL statement. The zero-based statement index is available as `$exception->statementIndex`.
+- `StatementException` — rqlite reported an error for a specific SQL statement. The zero-based statement index is available as `$exception->statementIndex` and the raw message as `$exception->errorMessage`. If SQLite reported result codes, `$exception->sqliteError` contains `code`, `extendedCode`, and `systemErrno`.
 - `DecodingException` — the response body was not valid JSON or had an unexpected shape.
+- `RqliteException` — rqlite returned a request-level error (for example `no leader`) or another client-level failure.
+
+Both the legacy `error` field and the structured `error_v2` field introduced in
+rqlite v10.6.0 are supported.
+
+## Handling numbers
+
+Integers larger than `PHP_INT_MAX` are decoded as strings to avoid precision loss.
+For example, a `BIGINT` value may come back as `"9223372036854775808"` rather than a
+float. Convert it to the type your schema expects.

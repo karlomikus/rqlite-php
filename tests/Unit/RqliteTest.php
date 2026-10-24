@@ -6,8 +6,10 @@ use Kami\Rqlite\Rqlite;
 use Kami\Rqlite\Http\Request;
 use Kami\Rqlite\Http\Response;
 use Kami\Rqlite\HttpAdapter;
+use Kami\Rqlite\Result\SQLiteError;
 use Kami\Rqlite\Result\ExecuteResult;
 use Kami\Rqlite\Exception\HttpException;
+use Kami\Rqlite\Exception\RqliteException;
 use Kami\Rqlite\Exception\DecodingException;
 use Kami\Rqlite\Exception\StatementException;
 use Kami\Rqlite\Exception\TransportException;
@@ -44,6 +46,68 @@ describe('Query', function () {
         $rqlite = new Rqlite($adapter);
         $rqlite->query(['SELECT * FROM foo']);
     })->throws(StatementException::class);
+
+    it('uses structured error details when error_v2 is present', function () {
+        $adapter = Mockery::mock(HttpAdapter::class);
+        $adapter->shouldReceive('send')
+            ->once()
+            ->andReturn(new Response(200, [], '{"results":[{"error":"legacy message","error_v2":{"message":"no such table: foo","sqlite":{"code":1,"extended_code":1,"system_errno":2}}}]}'));
+
+        $rqlite = new Rqlite($adapter);
+
+        try {
+            $rqlite->query(['SELECT * FROM foo']);
+        } catch (StatementException $exception) {
+            expect($exception->statementIndex)->toBe(0);
+            expect($exception->errorMessage)->toBe('no such table: foo');
+            expect($exception->sqliteError)->toBeInstanceOf(SQLiteError::class);
+            expect($exception->sqliteError?->code)->toBe(1);
+            expect($exception->sqliteError?->extendedCode)->toBe(1);
+            expect($exception->sqliteError?->systemErrno)->toBe(2);
+
+            return;
+        }
+
+        $this->fail('Expected a StatementException to be thrown.');
+    });
+
+    it('throws when rqlite returns a request-level error', function () {
+        $adapter = Mockery::mock(HttpAdapter::class);
+        $adapter->shouldReceive('send')
+            ->once()
+            ->andReturn(new Response(200, [], '{"error":"no leader"}'));
+
+        $rqlite = new Rqlite($adapter);
+
+        expect(fn () => $rqlite->query(['SELECT * FROM foo']))
+            ->toThrow(RqliteException::class, 'no leader');
+    });
+
+    it('throws a decoding exception when results are missing', function () {
+        $adapter = Mockery::mock(HttpAdapter::class);
+        $adapter->shouldReceive('send')
+            ->once()
+            ->andReturn(new Response(200, [], '{"time":"0.001"}'));
+
+        $rqlite = new Rqlite($adapter);
+
+        expect(fn () => $rqlite->query(['SELECT * FROM foo']))
+            ->toThrow(DecodingException::class);
+    });
+
+    it('preserves zero query timings and large integers', function () {
+        $adapter = Mockery::mock(HttpAdapter::class);
+        $adapter->shouldReceive('send')
+            ->once()
+            ->andReturn(new Response(200, [], '{"results":[{"types":{"id":"integer"},"rows":[{"id":9223372036854775808}],"time":"0"}],"time":"0"}'));
+
+        $rqlite = new Rqlite($adapter);
+        $result = $rqlite->query(['SELECT 9223372036854775808 AS id']);
+
+        expect($result->time)->toBe(0.0);
+        expect($result->results[0]->time)->toBe(0.0);
+        expect($result->results[0]->rows[0]['id'])->toBe('9223372036854775808');
+    });
 });
 
 describe('Execute', function () {
@@ -61,6 +125,36 @@ describe('Execute', function () {
         expect($result->results[0]->lastInsertId)->toBe(1);
         expect($result->results[0]->rowsAffected)->toBe(1);
         expect($result->results[0]->time)->toBeFloat()->toBe(0.00886);
+    });
+
+    it('preserves zero rows affected and zero timing', function () {
+        $adapter = Mockery::mock(HttpAdapter::class);
+        $adapter->shouldReceive('send')
+            ->once()
+            ->andReturn(new Response(200, [], '{"results":[{"last_insert_id":0,"rows_affected":0,"time":"0"}],"time":"0"}'));
+
+        $rqlite = new Rqlite($adapter);
+        $result = $rqlite->execute(['UPDATE foo SET name = "fiona" WHERE id = 99']);
+
+        expect($result->time)->toBe(0.0);
+        expect($result->results[0]->rowsAffected)->toBe(0);
+        expect($result->results[0]->time)->toBe(0.0);
+    });
+
+    it('does not send false boolean flags', function () {
+        $adapter = Mockery::mock(HttpAdapter::class);
+        $adapter->shouldReceive('send')
+            ->once()
+            ->with(Mockery::on(static function (Request $request): bool {
+                return $request->method === 'POST'
+                    && $request->uri === '/db/execute'
+                    && !array_key_exists('timings', $request->query())
+                    && ($request->query()['associative'] ?? null) === true;
+            }))
+            ->andReturn(new Response(200, [], '{"results":[{"last_insert_id":0,"rows_affected":0,"time":"0"}],"time":"0"}'));
+
+        $rqlite = new Rqlite($adapter);
+        $rqlite->execute(['CREATE TABLE foo (id INTEGER)'], timings: false);
     });
 });
 

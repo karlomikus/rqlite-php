@@ -11,13 +11,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        php-versions: ['8.2', '8.3', '8.4'] 
+        php-versions: ['8.2', '8.3', '8.4', '8.5']
     steps:
     - uses: shivammathur/setup-php@v2
       with:
         php-version: ${{ matrix.php-versions }}
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Install Dependencies
       run: composer install --dev
     - name: Execute tests
       run: vendor/bin/pest
+    - name: Execute PHPStan
+      run: vendor/bin/phpstan analyse

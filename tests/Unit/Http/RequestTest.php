@@ -15,6 +15,16 @@ it('adds json headers and encodes the body', function () {
     expect($request->body())->toBe('["SELECT 1"]');
 });
 
+it('omits false boolean query parameters', function () {
+    $request = new Request('POST', '/db/execute', [
+        'timings' => false,
+        'transaction' => true,
+        'associative' => false,
+    ]);
+
+    expect($request->query())->toBe(['transaction' => true]);
+});
+
 it('does not add a json content type for raw bodies', function () {
     $request = new Request('POST', '/db/load', rawBody: 'CREATE TABLE foo (id INTEGER)');
 

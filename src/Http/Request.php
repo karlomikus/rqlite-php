@@ -46,6 +46,9 @@ final class Request
     /**
      * Return only the query parameters that have a value.
      *
+     * `false` is omitted because rqlite treats the presence of a boolean flag
+     * (for example `timings` or `transaction`) as true, regardless of its value.
+     *
      * @return array<string, scalar>
      */
     public function query(): array
@@ -53,7 +56,7 @@ final class Request
         $query = [];
 
         foreach ($this->query as $key => $value) {
-            if ($value !== null) {
+            if ($value !== null && $value !== false) {
                 $query[$key] = $value;
             }
         }
