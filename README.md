@@ -53,14 +53,37 @@ $rqlite = new Rqlite($curlAdapter);
 
 // Run your SQL queries
 // Supports status(), query() and execute() endpoints
-$result = $rqlite->query([
+$results = $rqlite->query([
     'SELECT * FROM foo',
 ]);
 
-// Get the results
-// By default the results from query endpoint are fetch as associative arrays
-var_dump($result);
+// Results and rows are streamed as generators
+foreach ($results as $result) {
+    foreach ($result->rows as $row) {
+        var_dump($row);
+    }
+}
+
+// The top-level time is available after the stream has been fully consumed
+var_dump($results->time);
 ```
+
+## Streaming
+
+Response bodies are parsed incrementally, so large result sets do not need to be
+loaded into memory in full.
+
+- `query()` and `execute()` return `Results`, which is a single-pass iterator.
+- Query results and their rows are generators. Consume a result's rows before
+  advancing to the next result.
+- The top-level `Results::$time` and each query result's `time` are populated
+  after the corresponding stream has been consumed.
+- Do not collect query results with `iterator_to_array($results)` without
+  consuming their rows first. Iterate with nested `foreach` loops instead.
+
+Custom adapters should return a `Kami\Rqlite\Http\Response` whose body is a
+`Kami\Rqlite\Http\Body` stream. The Curl adapter spools to `php://temp`, while
+the Guzzle and File adapters stream the HTTP response directly.
 
 ## Error handling
 
@@ -74,6 +97,10 @@ All client exceptions extend `Kami\Rqlite\Exception\RqliteException`:
 
 Both the legacy `error` field and the structured `error_v2` field introduced in
 rqlite v10.6.0 are supported.
+
+Because responses are streamed, decoding and statement errors are raised while
+iterating the `Results` and row generators, not necessarily when `query()` or
+`execute()` is called. HTTP and transport errors are still raised immediately.
 
 ## Handling numbers
 

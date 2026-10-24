@@ -29,12 +29,21 @@ describe('Query', function () {
             ->andReturn(new Response(200, [], '{"results":[{"types":{"id":"integer"},"rows":[{"id":1}],"time":"0.001"}],"time":"0.001"}'));
 
         $rqlite = new Rqlite($adapter);
-        $result = $rqlite->query(['SELECT * FROM foo']);
+        $results = $rqlite->query(['SELECT * FROM foo']);
 
-        expect($result->results)->toBeArray()->toHaveCount(1);
-        expect($result->time)->toBeFloat()->toBe(0.001);
-        expect($result->results[0])->toBeInstanceOf(AssociativeQueryResult::class);
-        expect($result->results[0]->rows)->toBeArray()->toHaveCount(1);
+        $items = [];
+        $rows = [];
+
+        foreach ($results as $result) {
+            $items[] = $result;
+            $rows = iterator_to_array($result->rows);
+        }
+
+        expect($items)->toHaveCount(1);
+        expect($results->time)->toBeFloat()->toBe(0.001);
+        expect($items[0])->toBeInstanceOf(AssociativeQueryResult::class);
+        expect($items[0]->time)->toBe(0.001);
+        expect($rows)->toBeArray()->toHaveCount(1);
     });
 
     it('will throw exception on error', function () {
@@ -44,7 +53,9 @@ describe('Query', function () {
             ->andReturn(new Response(200, [], '{"results":[{"error":"rqlite error happened"}],"time":"0.001"}'));
 
         $rqlite = new Rqlite($adapter);
-        $rqlite->query(['SELECT * FROM foo']);
+        $results = $rqlite->query(['SELECT * FROM foo']);
+
+        iterator_to_array($results);
     })->throws(StatementException::class);
 
     it('uses structured error details when error_v2 is present', function () {
@@ -54,9 +65,10 @@ describe('Query', function () {
             ->andReturn(new Response(200, [], '{"results":[{"error":"legacy message","error_v2":{"message":"no such table: foo","sqlite":{"code":1,"extended_code":1,"system_errno":2}}}]}'));
 
         $rqlite = new Rqlite($adapter);
+        $results = $rqlite->query(['SELECT * FROM foo']);
 
         try {
-            $rqlite->query(['SELECT * FROM foo']);
+            iterator_to_array($results);
         } catch (StatementException $exception) {
             expect($exception->statementIndex)->toBe(0);
             expect($exception->errorMessage)->toBe('no such table: foo');
@@ -78,8 +90,9 @@ describe('Query', function () {
             ->andReturn(new Response(200, [], '{"error":"no leader"}'));
 
         $rqlite = new Rqlite($adapter);
+        $results = $rqlite->query(['SELECT * FROM foo']);
 
-        expect(fn () => $rqlite->query(['SELECT * FROM foo']))
+        expect(fn () => iterator_to_array($results))
             ->toThrow(RqliteException::class, 'no leader');
     });
 
@@ -90,8 +103,9 @@ describe('Query', function () {
             ->andReturn(new Response(200, [], '{"time":"0.001"}'));
 
         $rqlite = new Rqlite($adapter);
+        $results = $rqlite->query(['SELECT * FROM foo']);
 
-        expect(fn () => $rqlite->query(['SELECT * FROM foo']))
+        expect(fn () => iterator_to_array($results))
             ->toThrow(DecodingException::class);
     });
 
@@ -102,11 +116,19 @@ describe('Query', function () {
             ->andReturn(new Response(200, [], '{"results":[{"types":{"id":"integer"},"rows":[{"id":9223372036854775808}],"time":"0"}],"time":"0"}'));
 
         $rqlite = new Rqlite($adapter);
-        $result = $rqlite->query(['SELECT 9223372036854775808 AS id']);
+        $results = $rqlite->query(['SELECT 9223372036854775808 AS id']);
 
-        expect($result->time)->toBe(0.0);
-        expect($result->results[0]->time)->toBe(0.0);
-        expect($result->results[0]->rows[0]['id'])->toBe('9223372036854775808');
+        $result = null;
+        $rows = [];
+
+        foreach ($results as $item) {
+            $result = $item;
+            $rows = iterator_to_array($item->rows);
+        }
+
+        expect($results->time)->toBe(0.0);
+        expect($result?->time)->toBe(0.0);
+        expect($rows[0]['id'])->toBe('9223372036854775808');
     });
 });
 
@@ -118,13 +140,15 @@ describe('Execute', function () {
             ->andReturn(new Response(200, [], '{"results":[{"last_insert_id":1,"rows_affected":1,"time":"0.00886"}],"time":"0.0152"}'));
 
         $rqlite = new Rqlite($adapter);
-        $result = $rqlite->execute(['INSERT INTO foo(name, age) VALUES("fiona", 20)']);
+        $results = $rqlite->execute(['INSERT INTO foo(name, age) VALUES("fiona", 20)']);
 
-        expect($result->time)->tobeFloat()->toBe(0.0152);
-        expect($result->results[0])->toBeInstanceOf(ExecuteResult::class);
-        expect($result->results[0]->lastInsertId)->toBe(1);
-        expect($result->results[0]->rowsAffected)->toBe(1);
-        expect($result->results[0]->time)->toBeFloat()->toBe(0.00886);
+        $items = iterator_to_array($results->results);
+
+        expect($results->time)->tobeFloat()->toBe(0.0152);
+        expect($items[0])->toBeInstanceOf(ExecuteResult::class);
+        expect($items[0]->lastInsertId)->toBe(1);
+        expect($items[0]->rowsAffected)->toBe(1);
+        expect($items[0]->time)->toBeFloat()->toBe(0.00886);
     });
 
     it('preserves zero rows affected and zero timing', function () {
@@ -134,11 +158,13 @@ describe('Execute', function () {
             ->andReturn(new Response(200, [], '{"results":[{"last_insert_id":0,"rows_affected":0,"time":"0"}],"time":"0"}'));
 
         $rqlite = new Rqlite($adapter);
-        $result = $rqlite->execute(['UPDATE foo SET name = "fiona" WHERE id = 99']);
+        $results = $rqlite->execute(['UPDATE foo SET name = "fiona" WHERE id = 99']);
 
-        expect($result->time)->toBe(0.0);
-        expect($result->results[0]->rowsAffected)->toBe(0);
-        expect($result->results[0]->time)->toBe(0.0);
+        $items = iterator_to_array($results->results);
+
+        expect($results->time)->toBe(0.0);
+        expect($items[0]->rowsAffected)->toBe(0);
+        expect($items[0]->time)->toBe(0.0);
     });
 
     it('does not send false boolean flags', function () {
@@ -154,7 +180,7 @@ describe('Execute', function () {
             ->andReturn(new Response(200, [], '{"results":[{"last_insert_id":0,"rows_affected":0,"time":"0"}],"time":"0"}'));
 
         $rqlite = new Rqlite($adapter);
-        $rqlite->execute(['CREATE TABLE foo (id INTEGER)'], timings: false);
+        iterator_to_array($rqlite->execute(['CREATE TABLE foo (id INTEGER)'], timings: false)->results);
     });
 });
 
@@ -171,7 +197,7 @@ describe('HTTP transport errors', function () {
             $rqlite->query(['SELECT * FROM foo']);
         } catch (HttpException $exception) {
             expect($exception->response->statusCode)->toBe(503);
-            expect($exception->response->body)->toBe('service unavailable');
+            expect($exception->response->text())->toBe('service unavailable');
 
             return;
         }
@@ -186,8 +212,9 @@ describe('HTTP transport errors', function () {
             ->andReturn(new Response(200, [], 'not-json'));
 
         $rqlite = new Rqlite($adapter);
+        $results = $rqlite->query(['SELECT * FROM foo']);
 
-        expect(fn () => $rqlite->query(['SELECT * FROM foo']))->toThrow(DecodingException::class);
+        expect(fn () => iterator_to_array($results))->toThrow(DecodingException::class);
     });
 
     it('propagates transport exceptions', function () {

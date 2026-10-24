@@ -22,7 +22,7 @@ it('sends requests and returns a response', function () {
 
     expect($response->statusCode)->toBe(201);
     expect($response->header('x-test'))->toBe('yes');
-    expect($response->body)->toBe('response-body');
+    expect($response->text())->toBe('response-body');
 
     $sent = $history[0]['request'];
 
@@ -41,7 +41,7 @@ it('returns non-2xx responses instead of throwing', function () {
     $response = $adapter->send(new Request('GET', '/status'));
 
     expect($response->statusCode)->toBe(500);
-    expect($response->body)->toBe('server error');
+    expect($response->text())->toBe('server error');
 });
 
 it('wraps guzzle transport errors', function () {

@@ -60,5 +60,7 @@ function load_fixture(Rqlite $rqlite, string $fixture): void
         throw new RuntimeException("Unable to read fixture [{$fixture}].");
     }
 
-    $rqlite->execute([$sql]);
+    foreach ($rqlite->execute([$sql]) as $_) {
+        // Consume the result stream so statement errors are surfaced.
+    }
 }

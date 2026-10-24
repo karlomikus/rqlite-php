@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Kami\Rqlite\Adapters;
 
+use Kami\Rqlite\Http\Body;
 use Kami\Rqlite\HttpAdapter;
 use Kami\Rqlite\Http\Request;
 use Kami\Rqlite\Http\Response;
@@ -27,24 +28,24 @@ class File implements HttpAdapter
             $headers[] = $name . ': ' . $value;
         }
 
-        $context = [
-            'http' => [
-                'method' => $request->method,
-                'header' => $headers,
-                'ignore_errors' => true,
-                'follow_location' => 0,
-            ],
+        $httpContext = [
+            'method' => $request->method,
+            'header' => $headers,
+            'ignore_errors' => true,
+            'follow_location' => 0,
         ];
 
         $body = $request->body();
         if ($body !== null) {
-            $context['http']['content'] = $body;
+            $httpContext['content'] = $body;
         }
 
-        error_clear_last();
-        $responseBody = @file_get_contents($url, false, stream_context_create($context));
+        $context = stream_context_create(['http' => $httpContext]);
 
-        if ($responseBody === false) {
+        error_clear_last();
+        $stream = @fopen($url, 'rb', false, $context);
+
+        if ($stream === false) {
             $error = error_get_last();
 
             throw new TransportException($error['message'] ?? 'The file transport request failed.');
@@ -57,7 +58,7 @@ class File implements HttpAdapter
         return new Response(
             statusCode: $statusCode,
             headers: $responseHeaders,
-            body: $responseBody,
+            body: new Body($stream),
         );
     }
 

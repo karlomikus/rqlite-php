@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Kami\Rqlite\Adapters;
 
 use CurlHandle;
+use Kami\Rqlite\Http\Body;
 use Kami\Rqlite\HttpAdapter;
 use Kami\Rqlite\Http\Request;
 use Kami\Rqlite\Http\Response;
@@ -34,12 +35,19 @@ class Curl implements HttpAdapter
             $headers[] = $name . ': ' . $value;
         }
 
+        $bodyStream = fopen('php://temp', 'w+b');
+        if ($bodyStream === false) {
+            curl_close($curl);
+
+            throw new TransportException('Unable to create a response body stream.');
+        }
+
         $options = [
             CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             CURLOPT_CUSTOMREQUEST => $request->method,
             CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_FILE => $bodyStream,
             CURLOPT_HEADERFUNCTION => static function (CurlHandle $curl, string $header) use (&$responseHeaders): int {
                 $length = strlen($header);
                 $header = trim($header);
@@ -65,9 +73,9 @@ class Curl implements HttpAdapter
         curl_setopt_array($curl, $options);
 
         try {
-            $responseBody = curl_exec($curl);
+            $success = curl_exec($curl);
 
-            if ($responseBody === false) {
+            if ($success === false) {
                 $error = curl_error($curl);
 
                 throw new TransportException(
@@ -77,14 +85,20 @@ class Curl implements HttpAdapter
             }
 
             $statusCode = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+        } catch (\Throwable $exception) {
+            fclose($bodyStream);
+
+            throw $exception;
         } finally {
             curl_close($curl);
         }
 
+        rewind($bodyStream);
+
         return new Response(
             statusCode: $statusCode,
             headers: $this->normalizeHeaders($responseHeaders),
-            body: (string) $responseBody,
+            body: new Body($bodyStream),
         );
     }
 

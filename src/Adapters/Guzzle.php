@@ -6,6 +6,7 @@ namespace Kami\Rqlite\Adapters;
 
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\GuzzleException;
+use Kami\Rqlite\Http\Body;
 use Kami\Rqlite\HttpAdapter;
 use Kami\Rqlite\Http\Request;
 use Kami\Rqlite\Http\Response;
@@ -27,6 +28,7 @@ class Guzzle implements HttpAdapter
             'query' => $request->query(),
             'http_errors' => false,
             'allow_redirects' => false,
+            'stream' => true,
         ];
 
         if ($request->json !== null) {
@@ -41,10 +43,13 @@ class Guzzle implements HttpAdapter
             throw new TransportException($exception->getMessage(), (int) $exception->getCode(), $exception);
         }
 
+        $responseBody = $response->getBody();
+        $stream = $responseBody->detach();
+
         return new Response(
             statusCode: $response->getStatusCode(),
             headers: $response->getHeaders(),
-            body: (string) $response->getBody(),
+            body: is_resource($stream) ? new Body($stream) : Body::fromString($responseBody->getContents()),
         );
     }
 }
