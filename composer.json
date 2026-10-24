@@ -1,5 +1,7 @@
 {
     "name": "karlomikus/rqlite",
+    "description": "A PHP client for rqlite",
+    "type": "library",
     "autoload": {
         "psr-4": {
             "Kami\\Rqlite\\": "src/"
@@ -12,7 +14,7 @@
         }
     ],
     "require": {
-        "php": "^8.2|^8.3",
+        "php": "^8.2|^8.3|^8.4|^8.5",
         "psr/http-message": "^2.0",
         "psr/log": "^3.0"
     },
