@@ -33,7 +33,7 @@ class Rqlite
      *
      * @param array<mixed> $queries One or more queries
      * @param bool $timings Whether to include timings in the response
-     * @return Results
+     * @return Results<AssociativeQueryResult>
      * @throws HttpException
      * @throws TransportException
      */
@@ -45,6 +45,7 @@ class Rqlite
             'level' => $readConsistencyLevel ? $readConsistencyLevel->value : null,
         ], $queries);
 
+        /** @var Results<AssociativeQueryResult> $results */
         $results = new Results();
         $results->results = $this->streamQueryResponse($response->body, $results);
 
@@ -57,7 +58,7 @@ class Rqlite
      * @param array<mixed> $queries One or more queries
      * @param bool $timings Whether to include timings in the response
      * @param int|null $timeoutInSeconds Timeout in seconds
-     * @return Results
+     * @return Results<ExecuteResult>
      * @throws HttpException
      * @throws TransportException
      */
@@ -70,6 +71,7 @@ class Rqlite
             'transaction' => $withTransaction ? true : null,
         ], $queries);
 
+        /** @var Results<ExecuteResult> $results */
         $results = new Results();
         $results->results = $this->streamExecuteResponse($response->body, $results);
 

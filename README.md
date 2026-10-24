@@ -68,6 +68,31 @@ foreach ($results as $result) {
 var_dump($results->time);
 ```
 
+## Typed rows
+
+`Results` and `AssociativeQueryResult` are generic, so PHPStan (or any tool
+that understands generics) can narrow query rows to your own array shape:
+
+```php
+use Kami\Rqlite\Result\AssociativeQueryResult;
+use Kami\Rqlite\Result\Results;
+
+/** @var Results<AssociativeQueryResult<array{id: int, name: string}>> $results */
+$results = $rqlite->query([
+    'SELECT id, name FROM foo',
+]);
+
+foreach ($results as $result) {
+    foreach ($result->rows as $row) {
+        // $row is array{id: int, name: string}
+    }
+}
+```
+
+When no type is specified, rows default to `array<string, mixed>`. A single
+result can be annotated the same way with
+`AssociativeQueryResult<array{...}>`.
+
 ## Streaming
 
 Response bodies are parsed incrementally, so large result sets do not need to be

@@ -1,3 +1,6 @@
+# Unreleased
+- Added PHPStan generics to query results and result streams
+
 # 0.3.0
 - Changed HTTP responses to stream response bodies
 - Changed query and execute results to generators

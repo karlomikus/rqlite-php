@@ -12,12 +12,18 @@ use Generator;
  * Rows are exposed as a generator and are parsed from the response stream
  * lazily. Consume all rows before advancing to the next result in the parent
  * Results stream.
+ *
+ * The row type can be narrowed by consumers, for example:
+ *
+ *     /** @var AssociativeQueryResult<array{id: int, name: string}> $result *\/
+ *
+ * @template TRow of array<string, mixed> = array<string, mixed>
  */
 final class AssociativeQueryResult
 {
     /**
      * @param array<string, string> $types
-     * @param Generator<int, array<string, mixed>> $rows
+     * @param Generator<int, TRow> $rows
      */
     public function __construct(
         public array $types,
