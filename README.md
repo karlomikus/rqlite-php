@@ -5,6 +5,8 @@ database built on SQLite. It supports multiple HTTP adapters, streaming
 associative results, typed result objects, query/execute/request options, and
 structured rqlite errors.
 
+**This library is still in development**. The API will change before a stable release. I recommend that you use specific version constraints in your `composer.json` rather than `^0.2` or `dev-main`.
+
 ## Requirements
 
 - PHP 8.2, 8.3, 8.4 or 8.5
