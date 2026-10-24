@@ -27,6 +27,9 @@ use Kami\Rqlite\Result\RequestResult;
 |     RQLITE_URL_3=http://localhost:4021 \
 |     vendor/bin/pest --group=integration
 |
+| This test is also tagged with the "cluster" group because it needs every
+| node. Single-node CI runs can skip it with --exclude-group=cluster.
+|
 */
 
 it('loads the base schema and reads replicated rows from every node', function () {
@@ -109,4 +112,4 @@ it('loads the base schema and reads replicated rows from every node', function (
             ])->results);
         }
     }
-})->group('integration');
+})->group('integration', 'cluster');
