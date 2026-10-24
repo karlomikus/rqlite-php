@@ -12,6 +12,9 @@ class Curl implements Adapter
     {
     }
 
+    /**
+     * @param non-empty-string $uri The URI to send the request to, relative to the base URL.
+     */
     public function post(string $uri, array $body = [], array $query = []): string
     {
         $curl = curl_init();
@@ -26,7 +29,7 @@ class Curl implements Adapter
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             CURLOPT_CUSTOMREQUEST => 'POST',
-            CURLOPT_POSTFIELDS => json_encode($body),
+            CURLOPT_POSTFIELDS => json_encode($body, flags: JSON_THROW_ON_ERROR),
         ]);
 
         $out = curl_exec($curl);
@@ -36,6 +39,9 @@ class Curl implements Adapter
         return $out === false ? '' : (string) $out;
     }
 
+    /**
+     * @param non-empty-string $uri The URI to send the request to, relative to the base URL.
+     */
     public function get(string $uri, array $query = []): string
     {
         $curl = curl_init();

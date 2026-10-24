@@ -8,6 +8,16 @@ A basic rqlite client for PHP. Supports multiple HTTP adapters (Curl, Guzzle, Ba
 composer require karlomikus/rqlite
 ```
 
+## Development
+
+A minimal PHP CLI image with Composer is included for local development:
+
+```bash
+docker compose build
+docker compose run --rm php composer install
+docker compose run --rm php vendor/bin/pest
+```
+
 ## Usage
 
 ```php

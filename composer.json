@@ -23,7 +23,7 @@
     "require-dev": {
         "fakerphp/faker": "^1.23",
         "symfony/var-dumper": "^7.1",
-        "phpstan/phpstan": "^1.12",
+        "phpstan/phpstan": "^2.2",
         "guzzlehttp/guzzle": "^7.0",
         "pestphp/pest": "^3.5",
         "mockery/mockery": "^1.6"
