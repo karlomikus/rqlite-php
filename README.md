@@ -18,6 +18,24 @@ docker compose run --rm php composer install
 docker compose run --rm php vendor/bin/pest
 ```
 
+Unit tests are run by default. Integration tests are excluded from the default
+run and execute against the local three-node rqlite cluster:
+
+```bash
+docker compose up -d --wait myrqlite-service-1 myrqlite-service-2 myrqlite-service-3
+docker compose run --rm php vendor/bin/pest --group=integration
+```
+
+The integration test uses the compose service hostnames. When running Pest
+outside Docker, point it at the published ports instead:
+
+```bash
+RQLITE_URL=http://localhost:4001 \
+RQLITE_URL_2=http://localhost:4011 \
+RQLITE_URL_3=http://localhost:4021 \
+vendor/bin/pest --group=integration
+```
+
 ## Usage
 
 ```php

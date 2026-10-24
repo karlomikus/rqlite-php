@@ -1,5 +1,7 @@
 <?php
 
+use Kami\Rqlite\Rqlite;
+
 /*
 |--------------------------------------------------------------------------
 | Test Case
@@ -39,7 +41,24 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * Execute a .sql fixture against the given rqlite client.
+ *
+ * Fixtures live in tests/Fixtures and may contain multiple SQL statements.
+ */
+function load_fixture(Rqlite $rqlite, string $fixture): void
 {
-    // ..
+    $path = __DIR__ . '/Fixtures/' . ltrim($fixture, '/');
+
+    if (!is_file($path)) {
+        throw new InvalidArgumentException("Fixture [{$fixture}] does not exist.");
+    }
+
+    $sql = file_get_contents($path);
+
+    if ($sql === false) {
+        throw new RuntimeException("Unable to read fixture [{$fixture}].");
+    }
+
+    $rqlite->execute([$sql]);
 }

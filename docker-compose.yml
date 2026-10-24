@@ -2,7 +2,6 @@ services:
   php:
     build: .
     working_dir: /app
-    command: php ./app.php
     volumes:
       - ./:/app
 
@@ -36,6 +35,12 @@ services:
       HTTP_ADDR: myrqlite-host-2:4001
       RAFT_ADDR: myrqlite-host-2:4002
       SQLITE_EXTENSIONS: "sqlean,sqlite-vec,misc"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://myrqlite-host-2:4001/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     depends_on:
       myrqlite-service-1:
         condition: service_healthy
@@ -52,6 +57,12 @@ services:
       HTTP_ADDR: myrqlite-host-3:4001
       RAFT_ADDR: myrqlite-host-3:4002
       SQLITE_EXTENSIONS: "sqlean,sqlite-vec,misc"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://myrqlite-host-3:4001/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     depends_on:
       myrqlite-service-1:
         condition: service_healthy
