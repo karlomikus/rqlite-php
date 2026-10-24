@@ -4,64 +4,117 @@ declare(strict_types=1);
 
 namespace Kami\Rqlite\Adapters;
 
-use Kami\Rqlite\Adapter;
+use CurlHandle;
+use Kami\Rqlite\HttpAdapter;
+use Kami\Rqlite\Http\Request;
+use Kami\Rqlite\Http\Response;
+use Kami\Rqlite\Exception\TransportException;
 
-class Curl implements Adapter
+class Curl implements HttpAdapter
 {
     public function __construct(private readonly string $baseUrl)
     {
+        if (!extension_loaded('curl')) {
+            throw new TransportException('The cURL extension is required to use the Curl adapter.');
+        }
     }
 
-    /**
-     * @param non-empty-string $uri The URI to send the request to, relative to the base URL.
-     */
-    public function post(string $uri, array $body = [], array $query = []): string
+    public function send(Request $request): Response
     {
         $curl = curl_init();
-
-        $url = $this->baseUrl . $uri;
-        if (count($query) > 0) {
-            $url .= '?' . http_build_query($query);
+        if ($curl === false) {
+            throw new TransportException('Unable to initialize cURL.');
         }
 
-        curl_setopt_array($curl, [
+        $responseHeaders = [];
+        $url = $this->buildUrl($request);
+        $headers = [];
+
+        foreach ($request->headers() as $name => $value) {
+            $headers[] = $name . ': ' . $value;
+        }
+
+        $options = [
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => 'POST',
-            CURLOPT_POSTFIELDS => json_encode($body, flags: JSON_THROW_ON_ERROR),
-        ]);
+            CURLOPT_CUSTOMREQUEST => $request->method,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_HEADERFUNCTION => static function (CurlHandle $curl, string $header) use (&$responseHeaders): int {
+                $length = strlen($header);
+                $header = trim($header);
 
-        $out = curl_exec($curl);
+                if ($header === '' || str_starts_with($header, 'HTTP/')) {
+                    return $length;
+                }
 
-        curl_close($curl);
+                if (str_contains($header, ':')) {
+                    [$name, $value] = explode(':', $header, 2);
+                    $responseHeaders[strtolower(trim($name))][] = trim($value);
+                }
 
-        return $out === false ? '' : (string) $out;
+                return $length;
+            },
+        ];
+
+        $body = $request->body();
+        if ($body !== null) {
+            $options[CURLOPT_POSTFIELDS] = $body;
+        }
+
+        curl_setopt_array($curl, $options);
+
+        try {
+            $responseBody = curl_exec($curl);
+
+            if ($responseBody === false) {
+                $error = curl_error($curl);
+
+                throw new TransportException(
+                    $error !== '' ? $error : 'The cURL request failed.',
+                    curl_errno($curl),
+                );
+            }
+
+            $statusCode = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+        } finally {
+            curl_close($curl);
+        }
+
+        return new Response(
+            statusCode: $statusCode,
+            headers: $this->normalizeHeaders($responseHeaders),
+            body: (string) $responseBody,
+        );
     }
 
     /**
-     * @param non-empty-string $uri The URI to send the request to, relative to the base URL.
+     * @return non-empty-string
      */
-    public function get(string $uri, array $query = []): string
+    private function buildUrl(Request $request): string
     {
-        $curl = curl_init();
+        $url = rtrim($this->baseUrl, '/') . '/' . ltrim($request->uri, '/');
+        $query = $request->query();
 
-        $url = $this->baseUrl . $uri;
-        if (count($query) > 0) {
+        if ($query !== []) {
             $url .= '?' . http_build_query($query);
         }
 
-        curl_setopt_array($curl, [
-            CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => 'GET',
-        ]);
+        return $url;
+    }
 
-        $out = curl_exec($curl);
+    /**
+     * @param array<string, array<string>> $headers
+     * @return array<string, string|array<string>>
+     */
+    private function normalizeHeaders(array $headers): array
+    {
+        $normalized = [];
 
-        curl_close($curl);
+        foreach ($headers as $name => $values) {
+            $normalized[$name] = count($values) === 1 ? $values[0] : $values;
+        }
 
-        return $out === false ? '' : (string) $out;
+        return $normalized;
     }
 }

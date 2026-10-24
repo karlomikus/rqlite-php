@@ -27,7 +27,7 @@ use Kami\Rqlite\Rqlite;
 use Kami\Rqlite\Adapters\Curl;
 
 // Create a http adapter and point it to your rqlite server
-// You can create your own adapter by implementing the Adapter interface
+// You can create your own adapter by implementing the HttpAdapter interface
 $curlAdapter = new Curl('http://localhost:4001');
 
 // Create a Rqlite client instance and pass the adapter as a constructor argument
@@ -43,3 +43,12 @@ $result = $rqlite->query([
 // By default the results from query endpoint are fetch as associative arrays
 var_dump($result);
 ```
+
+## Error handling
+
+All client exceptions extend `Kami\Rqlite\Exception\RqliteException`:
+
+- `TransportException` — the request could not be completed (connection failure, timeout, etc.).
+- `HttpException` — rqlite returned a non-2xx response. The response is available as `$exception->response`.
+- `StatementException` — rqlite reported an error for a specific SQL statement. The zero-based statement index is available as `$exception->statementIndex`.
+- `DecodingException` — the response body was not valid JSON or had an unexpected shape.

@@ -4,16 +4,20 @@ declare(strict_types=1);
 
 namespace Kami\Rqlite;
 
-use Throwable;
+use JsonException;
+use Kami\Rqlite\Http\Request;
 use Kami\Rqlite\Result\Results;
+use Kami\Rqlite\Http\Response;
 use Kami\Rqlite\Result\ExecuteResult;
-use Kami\Rqlite\Exception\ClientException;
-use Kami\Rqlite\Exception\RqliteException;
+use Kami\Rqlite\Exception\HttpException;
+use Kami\Rqlite\Exception\DecodingException;
+use Kami\Rqlite\Exception\StatementException;
+use Kami\Rqlite\Exception\TransportException;
 use Kami\Rqlite\Result\AssociativeQueryResult;
 
 class Rqlite
 {
-    public function __construct(private readonly Adapter $httpAdapter)
+    public function __construct(private readonly HttpAdapter $httpAdapter)
     {
     }
 
@@ -23,25 +27,24 @@ class Rqlite
      * @param array<mixed> $queries One or more queries
      * @param bool $timings Whether to include timings in the response
      * @return Results
+     * @throws HttpException
+     * @throws DecodingException
+     * @throws StatementException
+     * @throws TransportException
      */
     public function query(array $queries, bool $timings = true, ?ReadConsistencyLevel $readConsistencyLevel = null): Results
     {
-        try {
-            $response = $this->httpAdapter->post('/db/query', $queries, [
-                'timings' => $timings,
-                'associative' => true,
-                'level' => $readConsistencyLevel ? $readConsistencyLevel->value : null,
-            ]);
-        } catch (Throwable $e) {
-            throw new ClientException($e->getMessage(), $e->getCode(), $e);
-        }
+        $obj = $this->requestJson('POST', '/db/query', [
+            'timings' => $timings,
+            'associative' => true,
+            'level' => $readConsistencyLevel ? $readConsistencyLevel->value : null,
+        ], $queries);
 
         $queryResults = [];
-        $obj = json_decode($response, true, flags: JSON_THROW_ON_ERROR);
 
-        foreach ($obj['results'] as $result) {
+        foreach ($obj['results'] as $index => $result) {
             if ($result['error'] ?? null) {
-                throw new RqliteException($result['error']);
+                throw new StatementException($index, $result['error']);
             }
 
             $queryResults[] = new AssociativeQueryResult(
@@ -64,26 +67,25 @@ class Rqlite
      * @param bool $timings Whether to include timings in the response
      * @param int|null $timeoutInSeconds Timeout in seconds
      * @return Results
+     * @throws HttpException
+     * @throws DecodingException
+     * @throws StatementException
+     * @throws TransportException
      */
     public function execute(array $queries, bool $timings = false, ?int $timeoutInSeconds = null, bool $withTransaction = false): Results
     {
-        try {
-            $response = $this->httpAdapter->post('/db/execute', $queries, [
-                'timings' => $timings,
-                'associative' => true,
-                'db_timeout' => $timeoutInSeconds ? $timeoutInSeconds . 's' : null,
-                'transaction' => $withTransaction ? true : null,
-            ]);
-        } catch (Throwable $e) {
-            throw new ClientException($e->getMessage(), $e->getCode(), $e);
-        }
+        $obj = $this->requestJson('POST', '/db/execute', [
+            'timings' => $timings,
+            'associative' => true,
+            'db_timeout' => $timeoutInSeconds ? $timeoutInSeconds . 's' : null,
+            'transaction' => $withTransaction ? true : null,
+        ], $queries);
 
         $queryResults = [];
-        $obj = json_decode($response, true, flags: JSON_THROW_ON_ERROR);
 
-        foreach ($obj['results'] as $result) {
+        foreach ($obj['results'] as $index => $result) {
             if ($result['error'] ?? null) {
-                throw new RqliteException($result['error']);
+                throw new StatementException($index, $result['error']);
             }
 
             $queryResults[] = new ExecuteResult(
@@ -103,13 +105,52 @@ class Rqlite
      * Get the status of the rqlite server
      *
      * @return array<mixed>
+     * @throws HttpException
+     * @throws DecodingException
+     * @throws TransportException
      */
     public function status(): array
     {
-        $response = $this->httpAdapter->get('/status');
+        return $this->requestJson('GET', '/status');
+    }
 
-        $obj = json_decode($response, true, flags: JSON_THROW_ON_ERROR);
+    /**
+     * @param non-empty-string $method
+     * @param non-empty-string $uri
+     * @param array<string, scalar|null> $query
+     * @param array<mixed>|null $json
+     * @return array<mixed>
+     * @throws HttpException
+     * @throws DecodingException
+     * @throws TransportException
+     */
+    private function requestJson(string $method, string $uri, array $query = [], ?array $json = null): array
+    {
+        $response = $this->httpAdapter->send(new Request($method, $uri, $query, json: $json));
 
-        return $obj;
+        if (!$response->isSuccessful()) {
+            throw new HttpException($response);
+        }
+
+        return $this->decodeResponse($response);
+    }
+
+    /**
+     * @return array<mixed>
+     * @throws DecodingException
+     */
+    private function decodeResponse(Response $response): array
+    {
+        try {
+            $decoded = json_decode($response->body, true, flags: JSON_THROW_ON_ERROR);
+        } catch (JsonException $exception) {
+            throw new DecodingException('Invalid JSON response from rqlite.', 0, $exception);
+        }
+
+        if (!is_array($decoded)) {
+            throw new DecodingException('Unexpected rqlite response.');
+        }
+
+        return $decoded;
     }
 }

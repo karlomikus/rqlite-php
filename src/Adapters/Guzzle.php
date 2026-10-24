@@ -4,31 +4,47 @@ declare(strict_types=1);
 
 namespace Kami\Rqlite\Adapters;
 
-use Kami\Rqlite\Adapter;
 use GuzzleHttp\ClientInterface;
+use GuzzleHttp\Exception\GuzzleException;
+use Kami\Rqlite\HttpAdapter;
+use Kami\Rqlite\Http\Request;
+use Kami\Rqlite\Http\Response;
+use Kami\Rqlite\Exception\TransportException;
 
-class Guzzle implements Adapter
+class Guzzle implements HttpAdapter
 {
+    /**
+     * @param ClientInterface $client A client configured with the rqlite base URI.
+     */
     public function __construct(private readonly ClientInterface $client)
     {
     }
 
-    public function post(string $uri, array $body = [], array $query = []): string
+    public function send(Request $request): Response
     {
-        $response = $this->client->request('POST', $uri, [
-            'json' => $body,
-            'query' => $query,
-        ]);
+        $options = [
+            'headers' => $request->headers(),
+            'query' => $request->query(),
+            'http_errors' => false,
+            'allow_redirects' => false,
+        ];
 
-        return $response->getBody()->getContents();
-    }
+        if ($request->json !== null) {
+            $options['json'] = $request->json;
+        } elseif ($request->rawBody !== null) {
+            $options['body'] = $request->rawBody;
+        }
 
-    public function get(string $uri, array $query = []): string
-    {
-        $response = $this->client->request('GET', $uri, [
-            'query' => $query,
-        ]);
+        try {
+            $response = $this->client->request($request->method, $request->uri, $options);
+        } catch (GuzzleException $exception) {
+            throw new TransportException($exception->getMessage(), (int) $exception->getCode(), $exception);
+        }
 
-        return $response->getBody()->getContents();
+        return new Response(
+            statusCode: $response->getStatusCode(),
+            headers: $response->getHeaders(),
+            body: (string) $response->getBody(),
+        );
     }
 }
