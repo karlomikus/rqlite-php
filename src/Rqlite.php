@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Kami\Rqlite;
 
 use Generator;
+use InvalidArgumentException;
 use Kami\Rqlite\Http\Body;
 use Kami\Rqlite\Http\JsonStream;
 use Kami\Rqlite\Http\Request;
@@ -32,17 +33,27 @@ class Rqlite
      * rows before advancing to the next result.
      *
      * @param array<mixed> $queries One or more queries
-     * @param bool $timings Whether to include timings in the response
      * @return Results<AssociativeQueryResult>
+     * @throws InvalidArgumentException
      * @throws HttpException
      * @throws TransportException
      */
-    public function query(array $queries, bool $timings = true, ?ReadConsistencyLevel $readConsistencyLevel = null): Results
+    public function query(array $queries, ?QueryOptions $options = null): Results
     {
+        $options ??= new QueryOptions();
+
         $response = $this->request('POST', '/db/query', [
-            'timings' => $timings,
+            'timings' => $options->timings,
+            'pretty' => $options->pretty,
             'associative' => true,
-            'level' => $readConsistencyLevel ? $readConsistencyLevel->value : null,
+            'blob_array' => $options->blobAsArray,
+            'level' => $options->readConsistencyLevel?->value,
+            'timeout' => self::durationToString($options->timeout),
+            'linearizable_timeout' => self::durationToString($options->linearizableTimeout),
+            'freshness' => self::durationToString($options->freshness),
+            'freshness_strict' => $options->freshnessStrict,
+            'raft_index' => $options->raftIndex,
+            'errors' => $options->errors?->value,
         ], $queries);
 
         /** @var Results<AssociativeQueryResult> $results */
@@ -475,5 +486,28 @@ class Rqlite
         }
 
         return (float) $value;
+    }
+
+    private static function durationToString(int|float|string|null $duration): ?string
+    {
+        if ($duration === null) {
+            return null;
+        }
+
+        if (is_string($duration)) {
+            $duration = trim($duration);
+
+            if ($duration === '') {
+                throw new InvalidArgumentException('A query option duration cannot be empty.');
+            }
+
+            return $duration;
+        }
+
+        if ($duration === 0 || $duration === 0.0) {
+            return null;
+        }
+
+        return $duration . 's';
     }
 }

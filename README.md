@@ -40,6 +40,36 @@ foreach ($results as $result) {
 var_dump($results->time);
 ```
 
+## Query options
+
+`query()` accepts a `QueryOptions` object. Options with a `false` or `null`
+value are omitted from the request.
+
+```php
+use Kami\Rqlite\ErrorFormat;
+use Kami\Rqlite\QueryOptions;
+use Kami\Rqlite\ReadConsistencyLevel;
+
+$results = $rqlite->query(
+    ['SELECT * FROM foo'],
+    new QueryOptions(
+        timings: true,
+        pretty: true,
+        readConsistencyLevel: ReadConsistencyLevel::Strong,
+        timeout: '2s',
+        raftIndex: true,
+        errors: ErrorFormat::V2,
+    ),
+);
+```
+
+The available options are `timings` (off by default), `pretty`, `blobAsArray`,
+`readConsistencyLevel`, `timeout`, `linearizableTimeout`, `freshness`,
+`freshnessStrict`, `raftIndex`, and `errors`. Durations accept Go duration
+strings such as `500ms` or `2s`, or a number of seconds.
+
+Results are always requested in associative form.
+
 ## Typed rows
 
 `Results` and `AssociativeQueryResult` are generic, so PHPStan (or any tool

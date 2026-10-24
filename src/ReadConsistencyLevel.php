@@ -9,5 +9,6 @@ enum ReadConsistencyLevel: string
     case None = 'none';
     case Weak = 'weak';
     case Strong = 'strong';
+    case Linearizable = 'linearizable';
     case Auto = 'auto';
 }

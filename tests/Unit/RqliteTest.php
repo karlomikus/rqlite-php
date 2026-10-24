@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use Kami\Rqlite\Rqlite;
+use Kami\Rqlite\ErrorFormat;
+use Kami\Rqlite\QueryOptions;
+use Kami\Rqlite\ReadConsistencyLevel;
 use Kami\Rqlite\Http\Request;
 use Kami\Rqlite\Http\Response;
 use Kami\Rqlite\HttpAdapter;
@@ -24,7 +27,7 @@ describe('Query', function () {
                 return $request->method === 'POST'
                     && $request->uri === '/db/query'
                     && $request->json === ['SELECT * FROM foo']
-                    && $request->query() === ['timings' => true, 'associative' => true];
+                    && $request->query() === ['associative' => true];
             }))
             ->andReturn(new Response(200, [], '{"results":[{"types":{"id":"integer"},"rows":[{"id":1}],"time":"0.001"}],"time":"0.001"}'));
 
@@ -44,6 +47,74 @@ describe('Query', function () {
         expect($items[0])->toBeInstanceOf(AssociativeQueryResult::class);
         expect($items[0]->time)->toBe(0.001);
         expect($rows)->toBeArray()->toHaveCount(1);
+    });
+
+    it('passes query options through to the request', function () {
+        $adapter = Mockery::mock(HttpAdapter::class);
+        $adapter->shouldReceive('send')
+            ->once()
+            ->with(Mockery::on(static function (Request $request): bool {
+                return $request->method === 'POST'
+                    && $request->uri === '/db/query'
+                    && $request->query() === [
+                        'timings' => true,
+                        'pretty' => true,
+                        'associative' => true,
+                        'blob_array' => true,
+                        'level' => 'linearizable',
+                        'timeout' => '2s',
+                        'linearizable_timeout' => '500ms',
+                        'freshness' => '1.5s',
+                        'freshness_strict' => true,
+                        'raft_index' => true,
+                        'errors' => 'v2',
+                    ];
+            }))
+            ->andReturn(new Response(200, [], '{"results":[{"types":{"id":"integer"},"rows":[{"id":1}]}]}'));
+
+        $rqlite = new Rqlite($adapter);
+        $results = $rqlite->query(['SELECT * FROM foo'], new QueryOptions(
+            timings: true,
+            pretty: true,
+            blobAsArray: true,
+            readConsistencyLevel: ReadConsistencyLevel::Linearizable,
+            timeout: 2,
+            linearizableTimeout: '500ms',
+            freshness: 1.5,
+            freshnessStrict: true,
+            raftIndex: true,
+            errors: ErrorFormat::V2,
+        ));
+
+        iterator_to_array($results);
+    });
+
+    it('omits zero query option durations', function () {
+        $adapter = Mockery::mock(HttpAdapter::class);
+        $adapter->shouldReceive('send')
+            ->once()
+            ->with(Mockery::on(static function (Request $request): bool {
+                return $request->query() === ['associative' => true];
+            }))
+            ->andReturn(new Response(200, [], '{"results":[{"types":{"id":"integer"},"rows":[{"id":1}]}]}'));
+
+        $rqlite = new Rqlite($adapter);
+        $results = $rqlite->query(['SELECT * FROM foo'], new QueryOptions(
+            timeout: 0,
+            linearizableTimeout: 0.0,
+            freshness: 0,
+        ));
+
+        iterator_to_array($results);
+    });
+
+    it('rejects empty query option durations', function () {
+        $adapter = Mockery::mock(HttpAdapter::class);
+
+        $rqlite = new Rqlite($adapter);
+
+        expect(fn () => $rqlite->query(['SELECT * FROM foo'], new QueryOptions(timeout: ' ')))
+            ->toThrow(InvalidArgumentException::class, 'A query option duration cannot be empty.');
     });
 
     it('will throw exception on error', function () {

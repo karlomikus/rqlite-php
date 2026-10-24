@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Kami\Rqlite\Rqlite;
+use Kami\Rqlite\QueryOptions;
 use Kami\Rqlite\Adapters\Curl;
 use Kami\Rqlite\ReadConsistencyLevel;
 
@@ -68,7 +69,7 @@ it('loads the base schema and reads replicated rows from every node', function (
         foreach ($clients as $client) {
             $queryResults = $client->query(
                 [['SELECT id, name, email FROM users WHERE email IN (?, ?) ORDER BY id', $alphaEmail, $betaEmail]],
-                readConsistencyLevel: ReadConsistencyLevel::Strong,
+                new QueryOptions(readConsistencyLevel: ReadConsistencyLevel::Strong),
             );
 
             $rows = [];
