@@ -24,7 +24,7 @@ $curlAdapter = new Curl('http://localhost:4001');
 $rqlite = new Rqlite($curlAdapter);
 
 // Run your SQL queries
-// Supports status(), query() and execute() endpoints
+// Supports status(), query(), execute() and request() endpoints
 $results = $rqlite->query([
     'SELECT * FROM foo',
 ]);
@@ -65,10 +65,62 @@ $results = $rqlite->query(
 
 The available options are `timings` (off by default), `pretty`, `blobAsArray`,
 `readConsistencyLevel`, `timeout`, `linearizableTimeout`, `freshness`,
-`freshnessStrict`, `raftIndex`, and `errors`. Durations accept Go duration
+`freshnessStrict`, `raftIndex`, and `errors`. Durations accept duration
 strings such as `500ms` or `2s`, or a number of seconds.
 
 Results are always requested in associative form.
+
+## Execute options
+
+`execute()` accepts an `ExecuteOptions` object:
+
+```php
+use Kami\Rqlite\ExecuteOptions;
+
+$results = $rqlite->execute(
+    [
+        ['INSERT INTO foo (name) VALUES (?)', 'fiona'],
+        ['INSERT INTO foo (name) VALUES (?)', 'bob'],
+    ],
+    new ExecuteOptions(
+        transaction: true,
+        timings: true,
+        timeout: '5s',
+    ),
+);
+```
+
+`timeout` is the request-forwarding timeout. Use `dbTimeout` for the
+per-statement SQLite timeout (`db_timeout`). Queued writes are enabled with
+`queue: true`, optionally combined with `wait: true`.
+
+## Unified request endpoint
+
+`request()` sends read and write statements through `/db/request`. Results are
+always associative and expose both query and execute fields:
+
+```php
+use Kami\Rqlite\RequestOptions;
+
+$results = $rqlite->request(
+    [
+        ['INSERT INTO foo (name) VALUES (?)', 'fiona'],
+        ['SELECT id, name FROM foo WHERE name = ?', 'fiona'],
+    ],
+    new RequestOptions(transaction: true),
+);
+
+foreach ($results as $result) {
+    foreach ($result->rows as $row) {
+        // Read statement rows
+    }
+
+    var_dump($result->lastInsertId, $result->rowsAffected);
+}
+```
+
+`RequestOptions` accepts the same read options as `QueryOptions`, plus
+`transaction`. Queued writes are not supported by `/db/request`.
 
 ## Typed rows
 
@@ -100,9 +152,10 @@ result can be annotated the same way with
 Response bodies are parsed incrementally, so large result sets do not need to be
 loaded into memory in full.
 
-- `query()` and `execute()` return `Results`, which is a single-pass iterator.
-- Query results and their rows are generators. Consume a result's rows before
-  advancing to the next result.
+- `query()`, `execute()`, and `request()` return `Results`, which is a
+  single-pass iterator.
+- Query and request results and their rows are generators. Consume a result's
+  rows before advancing to the next result.
 - The top-level `Results::$time` and each query result's `time` are populated
   after the corresponding stream has been consumed.
 - Do not collect query results with `iterator_to_array($results)` without

@@ -1,6 +1,9 @@
 # Unreleased
-- Added `QueryOptions` and changed `query()` to accept it instead of positional arguments
-- Added support for the `pretty`, `timings`, `blob_array`, `level`, `timeout`, `linearizable_timeout`, `freshness`, `freshness_strict`, `raft_index`, and `errors` query options
+- Added `QueryOptions`, `ExecuteOptions`, and `RequestOptions`, replacing the positional `query()` and `execute()` arguments
+- Added support for the `pretty`, `timings`, `blob_array`, `level`, `timeout`, `linearizable_timeout`, `freshness`, `freshness_strict`, `raft_index`, and `errors` query and request options
+- Added execute options for `transaction`, `pretty`, `timings`, `queue`, `wait`, `timeout`, `db_timeout`, `raft_index`, and `errors`
+- Added the unified `/db/request` endpoint via `request()` and `Result\RequestResult`
+- Removed the meaningless `associative` parameter from execute requests
 - Added `ErrorFormat` and `ReadConsistencyLevel::Linearizable`
 - Changed query timings to be disabled by default
 - Changed HTTP adapter interface

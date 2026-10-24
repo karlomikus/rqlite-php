@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 use Kami\Rqlite\Rqlite;
 use Kami\Rqlite\QueryOptions;
+use Kami\Rqlite\ExecuteOptions;
+use Kami\Rqlite\RequestOptions;
 use Kami\Rqlite\Adapters\Curl;
 use Kami\Rqlite\ReadConsistencyLevel;
+use Kami\Rqlite\Result\RequestResult;
 
 /*
 |--------------------------------------------------------------------------
@@ -51,7 +54,7 @@ it('loads the base schema and reads replicated rows from every node', function (
         $insert = $clients[0]->execute([
             ['INSERT INTO users (name, email) VALUES (?, ?)', 'Alpha', $alphaEmail],
             ['INSERT INTO users (name, email) VALUES (?, ?)', 'Beta', $betaEmail],
-        ], withTransaction: true);
+        ], new ExecuteOptions(transaction: true));
 
         $insertResults = iterator_to_array($insert->results);
 
@@ -83,6 +86,22 @@ it('loads the base schema and reads replicated rows from every node', function (
             expect($queryResult)->not->toBeNull();
             expect($rows)->toEqual($expectedRows);
         }
+
+        $requestResults = $clients[0]->request(
+            [['SELECT id, name, email FROM users WHERE email IN (?, ?) ORDER BY id', $alphaEmail, $betaEmail]],
+            new RequestOptions(readConsistencyLevel: ReadConsistencyLevel::Strong),
+        );
+
+        $requestResult = null;
+        $requestRows = [];
+
+        foreach ($requestResults as $result) {
+            $requestResult = $result;
+            $requestRows = iterator_to_array($result->rows);
+        }
+
+        expect($requestResult)->toBeInstanceOf(RequestResult::class);
+        expect($requestRows)->toEqual($expectedRows);
     } finally {
         if ($schemaLoaded) {
             iterator_to_array($clients[0]->execute([

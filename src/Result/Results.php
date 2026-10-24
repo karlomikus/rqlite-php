@@ -18,7 +18,7 @@ use IteratorAggregate;
  *
  *     /** @var Results<AssociativeQueryResult<array{id: int, name: string}>> $results *\/
  *
- * @template TResult of AssociativeQueryResult|ExecuteResult = AssociativeQueryResult|ExecuteResult
+ * @template TResult of AssociativeQueryResult|ExecuteResult|RequestResult = AssociativeQueryResult|ExecuteResult|RequestResult
  * @implements IteratorAggregate<int, TResult>
  */
 final class Results implements IteratorAggregate

@@ -12,6 +12,7 @@ use Kami\Rqlite\Http\Request;
 use Kami\Rqlite\Http\Response;
 use Kami\Rqlite\Result\AssociativeQueryResult;
 use Kami\Rqlite\Result\ExecuteResult;
+use Kami\Rqlite\Result\RequestResult;
 use Kami\Rqlite\Result\Results;
 use Kami\Rqlite\Result\SQLiteError;
 use Kami\Rqlite\Exception\DecodingException;
@@ -42,7 +43,7 @@ class Rqlite
     {
         $options ??= new QueryOptions();
 
-        $response = $this->request('POST', '/db/query', [
+        $response = $this->sendRequest('POST', '/db/query', [
             'timings' => $options->timings,
             'pretty' => $options->pretty,
             'associative' => true,
@@ -64,27 +65,68 @@ class Rqlite
     }
 
     /**
-     * Run a query via the execute endpoint.
+     * Run one or more statements via the execute endpoint.
      *
-     * @param array<mixed> $queries One or more queries
-     * @param bool $timings Whether to include timings in the response
-     * @param int|null $timeoutInSeconds Timeout in seconds
+     * @param array<mixed> $statements One or more statements
      * @return Results<ExecuteResult>
+     * @throws InvalidArgumentException
      * @throws HttpException
      * @throws TransportException
      */
-    public function execute(array $queries, bool $timings = false, ?int $timeoutInSeconds = null, bool $withTransaction = false): Results
+    public function execute(array $statements, ?ExecuteOptions $options = null): Results
     {
-        $response = $this->request('POST', '/db/execute', [
-            'timings' => $timings,
-            'associative' => true,
-            'db_timeout' => $timeoutInSeconds ? $timeoutInSeconds . 's' : null,
-            'transaction' => $withTransaction ? true : null,
-        ], $queries);
+        $options ??= new ExecuteOptions();
+
+        $response = $this->sendRequest('POST', '/db/execute', [
+            'timings' => $options->timings,
+            'pretty' => $options->pretty,
+            'db_timeout' => self::durationToString($options->dbTimeout),
+            'timeout' => self::durationToString($options->timeout),
+            'transaction' => $options->transaction,
+            'queue' => $options->queue,
+            'wait' => $options->wait,
+            'raft_index' => $options->raftIndex,
+            'errors' => $options->errors?->value,
+        ], $statements);
 
         /** @var Results<ExecuteResult> $results */
         $results = new Results();
         $results->results = $this->streamExecuteResponse($response->body, $results);
+
+        return $results;
+    }
+
+    /**
+     * Run one or more read or write statements via the unified request endpoint.
+     *
+     * @param array<mixed> $statements One or more statements
+     * @return Results<RequestResult>
+     * @throws InvalidArgumentException
+     * @throws HttpException
+     * @throws TransportException
+     */
+    public function request(array $statements, ?RequestOptions $options = null): Results
+    {
+        $options ??= new RequestOptions();
+
+        $response = $this->sendRequest('POST', '/db/request', [
+            'transaction' => $options->transaction,
+            'timings' => $options->timings,
+            'pretty' => $options->pretty,
+            'associative' => true,
+            'blob_array' => $options->blobAsArray,
+            'level' => $options->readConsistencyLevel?->value,
+            'timeout' => self::durationToString($options->timeout),
+            'linearizable_timeout' => self::durationToString($options->linearizableTimeout),
+            'freshness' => self::durationToString($options->freshness),
+            'freshness_strict' => $options->freshnessStrict,
+            'raft_index' => $options->raftIndex,
+            'errors' => $options->errors?->value,
+        ], $statements);
+
+        /** @var Results<RequestResult> $results */
+        $results = new Results();
+        $results->results = $this->streamRequestResponse($response->body, $results);
 
         return $results;
     }
@@ -99,7 +141,7 @@ class Rqlite
      */
     public function status(): array
     {
-        return $this->decodeDocument($this->request('GET', '/status')->body);
+        return $this->decodeDocument($this->sendRequest('GET', '/status')->body);
     }
 
     /**
@@ -110,7 +152,7 @@ class Rqlite
      * @throws HttpException
      * @throws TransportException
      */
-    private function request(string $method, string $uri, array $query = [], ?array $json = null): Response
+    private function sendRequest(string $method, string $uri, array $query = [], ?array $json = null): Response
     {
         $response = $this->httpAdapter->send(new Request($method, $uri, $query, json: $json));
 
@@ -404,6 +446,195 @@ class Rqlite
     }
 
     /**
+     * @return Generator<int, RequestResult>
+     * @throws DecodingException
+     * @throws RqliteException
+     * @throws StatementException
+     */
+    private function streamRequestResponse(Body $body, Results $results): Generator
+    {
+        $json = new JsonStream($body);
+        $resultsSeen = false;
+
+        $json->beginObject();
+
+        while ($json->hasMore('}')) {
+            $key = $json->readKey();
+
+            switch ($key) {
+                case 'results':
+                    $resultsSeen = true;
+                    $json->beginArray();
+
+                    $index = 0;
+
+                    while ($json->hasMore(']')) {
+                        yield from $this->streamRequestResult($json, $index);
+                        $json->separator(']');
+                        $index++;
+                    }
+
+                    $json->endArray();
+                    break;
+                case 'error':
+                    $this->throwOnRequestError($json->readValue());
+                    break;
+                case 'time':
+                    $results->time = self::floatOrNull($json->readValue());
+                    break;
+                default:
+                    $json->skipValue();
+                    break;
+            }
+
+            $json->separator('}');
+        }
+
+        $json->endObject();
+        $json->ensureEnd();
+
+        if (!$resultsSeen) {
+            throw new DecodingException('The rqlite response does not contain a results array.');
+        }
+    }
+
+    /**
+     * @return Generator<int, RequestResult>
+     * @throws DecodingException
+     * @throws StatementException
+     */
+    private function streamRequestResult(JsonStream $json, int $index): Generator
+    {
+        $json->beginObject();
+
+        /** @var array<string, string> $types */
+        $types = [];
+        $typesSeen = false;
+        $rowsSeen = false;
+        $lastInsertId = null;
+        $rowsAffected = null;
+        $time = null;
+        $legacyError = null;
+        $structuredError = null;
+        $result = null;
+
+        while ($json->hasMore('}')) {
+            $key = $json->readKey();
+
+            switch ($key) {
+                case 'types':
+                    $value = $json->readValue();
+
+                    if (!is_array($value)) {
+                        throw new DecodingException('The rqlite request result has an invalid types field.');
+                    }
+
+                    /** @var array<string, string> $types */
+                    $types = $value;
+                    $typesSeen = true;
+
+                    if ($result instanceof RequestResult) {
+                        $result->types = $types;
+                    }
+                    break;
+                case 'rows':
+                    $rowsSeen = true;
+                    $rowsConsumed = false;
+                    $rows = $this->streamRows($json, $rowsConsumed);
+                    $result = new RequestResult(
+                        types: $types,
+                        rows: $rows,
+                        lastInsertId: $lastInsertId,
+                        rowsAffected: $rowsAffected === null ? null : (int) $rowsAffected,
+                        time: $time,
+                    );
+
+                    yield $result;
+
+                    // If the caller did not fully consume the rows, advance past
+                    // them before parsing the rest of the result object.
+                    if (!$rowsConsumed) {
+                        foreach ($rows as $_) {
+                        }
+                    }
+                    break;
+                case 'last_insert_id':
+                    $lastInsertId = $json->readValue();
+
+                    if ($result instanceof RequestResult) {
+                        $result->lastInsertId = $lastInsertId;
+                    }
+                    break;
+                case 'rows_affected':
+                    $rowsAffected = $json->readValue();
+
+                    if ($result instanceof RequestResult) {
+                        $result->rowsAffected = $rowsAffected === null ? null : (int) $rowsAffected;
+                    }
+                    break;
+                case 'time':
+                    $time = self::floatOrNull($json->readValue());
+
+                    if ($result instanceof RequestResult) {
+                        $result->time = $time;
+                    }
+                    break;
+                case 'error':
+                    $value = $json->readValue();
+
+                    if (is_string($value) && $value !== '') {
+                        $legacyError = $value;
+                    }
+                    break;
+                case 'error_v2':
+                    $value = $json->readValue();
+
+                    if (is_array($value)) {
+                        $structuredError = $value;
+                    }
+                    break;
+                default:
+                    $json->skipValue();
+                    break;
+            }
+
+            $json->separator('}');
+        }
+
+        $json->endObject();
+
+        $this->throwOnStatementError($index, $legacyError, $structuredError);
+
+        if ($rowsSeen) {
+            if (!$typesSeen) {
+                throw new DecodingException('The rqlite request result is missing types or rows.');
+            }
+
+            return;
+        }
+
+        if ($lastInsertId === null && $rowsAffected === null) {
+            throw new DecodingException('The rqlite request result is missing rows or execute fields.');
+        }
+
+        yield new RequestResult(
+            types: $types,
+            rows: self::emptyRows(),
+            lastInsertId: $lastInsertId,
+            rowsAffected: $rowsAffected === null ? null : (int) $rowsAffected,
+            time: $time,
+        );
+    }
+
+    /**
+     * @return Generator<int, array<string, mixed>>
+     */
+    private static function emptyRows(): Generator
+    {
+        yield from [];
+    }
+
+    /**
      * @return array<mixed>
      * @throws DecodingException
      */
@@ -498,7 +729,7 @@ class Rqlite
             $duration = trim($duration);
 
             if ($duration === '') {
-                throw new InvalidArgumentException('A query option duration cannot be empty.');
+                throw new InvalidArgumentException('A duration option cannot be empty.');
             }
 
             return $duration;
