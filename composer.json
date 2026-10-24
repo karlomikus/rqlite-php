@@ -2,6 +2,7 @@
     "name": "karlomikus/rqlite",
     "description": "A PHP client for rqlite",
     "type": "library",
+    "license": "MIT",
     "autoload": {
         "psr-4": {
             "Kami\\Rqlite\\": "src/"

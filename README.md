@@ -5,6 +5,10 @@ database built on SQLite. It supports multiple HTTP adapters, streaming
 associative results, typed result objects, query/execute/request options, and
 structured rqlite errors.
 
+[![PHP Version](https://img.shields.io/badge/PHP-%3E%3D8.2-blue)](https://php.net)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE.md)
+![Packagist Version](https://img.shields.io/packagist/v/karlomikus/rqlite)
+
 **This library is still in development**. The API will change before a stable release. I recommend that you use specific version constraints in your `composer.json` rather than `^0.2` or `dev-main`.
 
 ## Requirements
@@ -85,6 +89,17 @@ $rqlite->query([
 
 Parameter arrays are forwarded to rqlite as-is. Use a list for positional
 parameters and an associative array for named parameters.
+
+`SQLStatement` builds the same statement payloads when you prefer a typed object:
+
+```php
+use Kami\Rqlite\SQLStatement;
+
+$rqlite->query([
+    new SQLStatement('SELECT id, name FROM users WHERE id = ?', 1),
+    new SQLStatement('SELECT id, name FROM users WHERE name = :name', ['name' => 'fiona']),
+]);
+```
 
 ## Query options
 
@@ -381,7 +396,7 @@ The following rqlite features are not implemented yet:
 - Built-in basic auth and TLS configuration in the Curl and File adapters
 - Built-in timeout configuration in the Curl and File adapters
 - Connection retry and load balancing across multiple nodes
-- Single-statement helpers and typed statement builders
+- Single-statement helpers
 - Queued writes on `/db/request`
 - Exposing `raft_index` and `sequence_number` from responses
 - Per-statement error inspection without throwing
