@@ -6,6 +6,12 @@ namespace Kami\Rqlite\Exception;
 
 use Kami\Rqlite\Http\Response;
 
+/**
+ * Thrown when rqlite responds with a non-2xx HTTP status.
+ *
+ * The complete response is available via the $response property, including
+ * the status code, headers, and response body.
+ */
 final class HttpException extends RqliteException
 {
     public function __construct(
