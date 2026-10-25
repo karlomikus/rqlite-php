@@ -5,6 +5,11 @@ database built on SQLite. It supports multiple HTTP adapters, streaming
 associative results, typed result objects, query/execute/request options, and
 structured rqlite errors.
 
+[![PHP Version](https://img.shields.io/badge/PHP-%3E%3D8.2-blue)](https://php.net)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE.md)
+![Packagist Version](https://img.shields.io/packagist/v/karlomikus/rqlite)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/karlomikus/rqlite-php/php.yml)
+
 **This library is still in development**. The API will change before a stable release. I recommend that you use specific version constraints in your `composer.json` rather than `^0.2` or `dev-main`.
 
 ## Requirements
@@ -381,7 +386,7 @@ The following rqlite features are not implemented yet:
 - Built-in basic auth and TLS configuration in the Curl and File adapters
 - Built-in timeout configuration in the Curl and File adapters
 - Connection retry and load balancing across multiple nodes
-- Single-statement helpers and typed statement builders
+- Single-statement helpers
 - Queued writes on `/db/request`
 - Exposing `raft_index` and `sequence_number` from responses
 - Per-statement error inspection without throwing
@@ -397,14 +402,21 @@ docker compose run --rm php vendor/bin/pest
 ```
 
 Unit tests are run by default. Integration tests are excluded from the default
-run and execute against the local three-node rqlite cluster:
+run and execute against rqlite. Most integration tests only need a single node:
+
+```bash
+docker compose up -d --wait myrqlite-service-1
+docker compose run --rm php vendor/bin/pest --group=integration --exclude-group=cluster
+```
+
+The cluster test additionally verifies replication across all three nodes:
 
 ```bash
 docker compose up -d --wait myrqlite-service-1 myrqlite-service-2 myrqlite-service-3
 docker compose run --rm php vendor/bin/pest --group=integration
 ```
 
-The integration test uses the compose service hostnames. When running Pest
+The integration tests use the compose service hostnames. When running Pest
 outside Docker, point it at the published ports instead:
 
 ```bash
@@ -412,4 +424,10 @@ RQLITE_URL=http://localhost:4001 \
 RQLITE_URL_2=http://localhost:4011 \
 RQLITE_URL_3=http://localhost:4021 \
 vendor/bin/pest --group=integration
+
+# Single node only
+RQLITE_URL=http://localhost:4001 \
+vendor/bin/pest --group=integration --exclude-group=cluster
 ```
+
+CI runs the single-node integration suite against an rqlite service container.

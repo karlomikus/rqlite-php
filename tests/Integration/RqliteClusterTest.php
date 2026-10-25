@@ -10,25 +10,6 @@ use Kami\Rqlite\Adapters\Curl;
 use Kami\Rqlite\ReadConsistencyLevel;
 use Kami\Rqlite\Result\RequestResult;
 
-/*
-|--------------------------------------------------------------------------
-| Integration test
-|--------------------------------------------------------------------------
-|
-| Runs against the three-node rqlite cluster defined in docker-compose.yml.
-| Start the cluster first, then run:
-|
-|     docker compose run --rm php vendor/bin/pest --group=integration
-|
-| When running the test outside the PHP container, override the node URLs:
-|
-|     RQLITE_URL=http://localhost:4001 \
-|     RQLITE_URL_2=http://localhost:4011 \
-|     RQLITE_URL_3=http://localhost:4021 \
-|     vendor/bin/pest --group=integration
-|
-*/
-
 it('loads the base schema and reads replicated rows from every node', function () {
     $clients = array_map(
         static fn (string $url): Rqlite => new Rqlite(new Curl($url)),
@@ -109,4 +90,4 @@ it('loads the base schema and reads replicated rows from every node', function (
             ])->results);
         }
     }
-})->group('integration');
+})->group('integration', 'cluster');

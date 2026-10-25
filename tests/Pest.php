@@ -1,6 +1,12 @@
 <?php
 
+use Kami\Rqlite\Adapters\Curl;
+use Kami\Rqlite\ExecuteOptions;
+use Kami\Rqlite\QueryOptions;
 use Kami\Rqlite\Rqlite;
+use Kami\Rqlite\Result\AssociativeQueryResult;
+use Kami\Rqlite\Result\ExecuteResult;
+use Kami\Rqlite\Result\Results;
 
 /*
 |--------------------------------------------------------------------------
@@ -62,5 +68,89 @@ function load_fixture(Rqlite $rqlite, string $fixture): void
 
     foreach ($rqlite->execute([$sql]) as $_) {
         // Consume the result stream so statement errors are surfaced.
+    }
+}
+
+/**
+ * Create a client for the integration cluster.
+ */
+function integration_client(): Rqlite
+{
+    return new Rqlite(new Curl(getenv('RQLITE_URL') ?: 'http://myrqlite-service-1:4001'));
+}
+
+/**
+ * Generate a unique table name so integration runs do not collide.
+ */
+function integration_table(string $prefix): string
+{
+    return sprintf('go_parity_%s_%s', $prefix, bin2hex(random_bytes(6)));
+}
+
+/**
+ * Run statements through execute() and collect all results.
+ *
+ * @param array<mixed> $statements
+ * @return list<ExecuteResult>
+ */
+function integration_execute(Rqlite $rqlite, array $statements, ?ExecuteOptions $options = null): array
+{
+    return array_values(iterator_to_array($rqlite->execute($statements, $options)->results));
+}
+
+/**
+ * Run queries through query() and collect the results and their rows.
+ *
+ * @param array<mixed> $statements
+ * @return array{
+ *     results: Results<AssociativeQueryResult>,
+ *     items: list<AssociativeQueryResult>,
+ *     rows: list<list<array<string, mixed>>>
+ * }
+ */
+function integration_query(Rqlite $rqlite, array $statements, ?QueryOptions $options = null): array
+{
+    $results = $rqlite->query($statements, $options);
+    $items = [];
+    $rows = [];
+
+    foreach ($results as $result) {
+        $items[] = $result;
+        $rows[] = iterator_to_array($result->rows);
+    }
+
+    return ['results' => $results, 'items' => $items, 'rows' => $rows];
+}
+
+/**
+ * Run queries and return the rows from every result.
+ *
+ * @param array<mixed> $statements
+ * @return list<array<string, mixed>>
+ */
+function integration_rows(Rqlite $rqlite, array $statements, ?QueryOptions $options = null): array
+{
+    $rows = [];
+
+    foreach (integration_query($rqlite, $statements, $options)['rows'] as $resultRows) {
+        foreach ($resultRows as $row) {
+            $rows[] = $row;
+        }
+    }
+
+    return $rows;
+}
+
+/**
+ * Drop tables, ignoring failures so cleanup never masks a test failure.
+ */
+function integration_drop_tables(Rqlite $rqlite, string ...$tables): void
+{
+    foreach ($tables as $table) {
+        try {
+            integration_execute($rqlite, [sprintf('DROP TABLE IF EXISTS %s', $table)]);
+        } catch (Throwable) {
+            // Best-effort cleanup.
+        }
     }
 }

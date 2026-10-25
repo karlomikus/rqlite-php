@@ -12,14 +12,29 @@ jobs:
     strategy:
       matrix:
         php-versions: ['8.2', '8.3', '8.4', '8.5']
+    services:
+      rqlite:
+        image: rqlite/rqlite:latest
+        ports:
+          - "4001:4001"
+        options: >-
+          --health-cmd "wget -q -O /dev/null http://localhost:4001/readyz"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
     - uses: shivammathur/setup-php@v2
       with:
         php-version: ${{ matrix.php-versions }}
+        extensions: curl
     - uses: actions/checkout@v7
     - name: Install Dependencies
       run: composer install --dev
     - name: Execute tests
       run: vendor/bin/pest
+    - name: Execute integration tests
+      env:
+        RQLITE_URL: http://localhost:4001
+      run: vendor/bin/pest --group=integration --exclude-group=cluster
     - name: Execute PHPStan
       run: vendor/bin/phpstan analyse
