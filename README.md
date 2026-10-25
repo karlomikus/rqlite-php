@@ -8,6 +8,7 @@ structured rqlite errors.
 [![PHP Version](https://img.shields.io/badge/PHP-%3E%3D8.2-blue)](https://php.net)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE.md)
 ![Packagist Version](https://img.shields.io/packagist/v/karlomikus/rqlite)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/karlomikus/rqlite-php/php.yml)
 
 **This library is still in development**. The API will change before a stable release. I recommend that you use specific version constraints in your `composer.json` rather than `^0.2` or `dev-main`.
 
