@@ -91,17 +91,6 @@ $rqlite->query([
 Parameter arrays are forwarded to rqlite as-is. Use a list for positional
 parameters and an associative array for named parameters.
 
-`SQLStatement` builds the same statement payloads when you prefer a typed object:
-
-```php
-use Kami\Rqlite\SQLStatement;
-
-$rqlite->query([
-    new SQLStatement('SELECT id, name FROM users WHERE id = ?', 1),
-    new SQLStatement('SELECT id, name FROM users WHERE name = :name', ['name' => 'fiona']),
-]);
-```
-
 ## Query options
 
 `query()` accepts a `QueryOptions` object. Options with a `false` or `null`
