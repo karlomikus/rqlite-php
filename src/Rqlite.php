@@ -538,6 +538,14 @@ class Rqlite
                     }
                     break;
                 case 'rows':
+                    // rqlite renders `rows` as `null` for write statements when
+                    // the request is made in associative form. Treat it as
+                    // absent so the write result below is produced instead.
+                    if ($json->nextIsNull()) {
+                        $json->skipValue();
+                        break;
+                    }
+
                     $rowsSeen = true;
                     $rowsConsumed = false;
                     $rows = $this->streamRows($json, $rowsConsumed);

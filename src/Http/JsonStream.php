@@ -63,6 +63,16 @@ final class JsonStream
         return $key;
     }
 
+    /**
+     * Whether the next value is a JSON `null` scalar, without consuming it.
+     */
+    public function nextIsNull(): bool
+    {
+        $this->skipWhitespace();
+
+        return $this->peek() === 'n';
+    }
+
     public function readValue(): mixed
     {
         $raw = $this->readRawValue();

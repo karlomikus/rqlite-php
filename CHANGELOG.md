@@ -1,3 +1,6 @@
+# 0.2.1
+- Fixed null handling in JsonStream
+
 # 0.2.0
 - Added `QueryOptions`, `ExecuteOptions`, and `RequestOptions`, replacing the positional `query()` and `execute()` arguments
 - Added support for the `pretty`, `timings`, `blob_array`, `level`, `timeout`, `linearizable_timeout`, `freshness`, `freshness_strict`, `raft_index`, and `errors` query and request options
