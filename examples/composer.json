@@ -1,0 +1,22 @@
+{
+    "name": "karlomikus/rqlite-examples",
+    "description": "Example application for the karlomikus/rqlite PHP client",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": "^8.4",
+        "karlomikus/rqlite": "@dev"
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "..",
+            "options": {
+                "symlink": true
+            }
+        }
+    ],
+    "config": {
+        "sort-packages": true
+    }
+}
