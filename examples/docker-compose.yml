@@ -1,0 +1,24 @@
+services:
+  php:
+    build:
+      context: ..
+      dockerfile: examples/Dockerfile
+    working_dir: /app/examples
+    volumes:
+      - ..:/app
+    environment:
+      RQLITE_URL: http://rqlite:4001
+    depends_on:
+      rqlite:
+        condition: service_healthy
+
+  rqlite:
+    image: rqlite/rqlite:latest
+    ports:
+      - "4101:4001"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:4001/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s

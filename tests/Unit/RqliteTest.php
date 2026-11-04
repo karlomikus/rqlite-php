@@ -369,6 +369,36 @@ describe('Request', function () {
         iterator_to_array($results);
     });
 
+    it('decodes associative write results with null rows', function () {
+        // rqlite renders `rows` as `null` for write statements when the request
+        // is made in associative form (`associative=true`).
+        $adapter = Mockery::mock(HttpAdapter::class);
+        $adapter->shouldReceive('send')
+            ->once()
+            ->andReturn(new Response(200, [], '{"results":[{"last_insert_id":6,"rows_affected":1,"rows":null},{"types":{"id":"integer","title":"text"},"rows":[{"id":6,"title":"x"}]}],"time":"0"}'));
+
+        $rqlite = new Rqlite($adapter);
+        $results = $rqlite->request([
+            'INSERT INTO foo(title) VALUES(?)',
+            'SELECT id, title FROM foo',
+        ]);
+
+        $items = [];
+        $rows = [];
+
+        foreach ($results as $result) {
+            $items[] = $result;
+            $rows[] = iterator_to_array($result->rows);
+        }
+
+        expect($items)->toHaveCount(2);
+        expect($items[0]->lastInsertId)->toBe(6);
+        expect($items[0]->rowsAffected)->toBe(1);
+        expect($rows[0])->toBe([]);
+        expect($items[1]->types)->toBe(['id' => 'integer', 'title' => 'text']);
+        expect($rows[1])->toBe([['id' => 6, 'title' => 'x']]);
+    });
+
     it('throws when a request statement fails', function () {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
