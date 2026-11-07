@@ -7,9 +7,7 @@ namespace Kami\Rqlite;
 use Generator;
 use InvalidArgumentException;
 use RuntimeException;
-use Kami\Rqlite\Http\Body;
 use Kami\Rqlite\Http\JsonStream;
-use Kami\Rqlite\Http\Request;
 use Kami\Rqlite\Result\AssociativeQueryResult;
 use Kami\Rqlite\Result\ExecuteResult;
 use Kami\Rqlite\Result\RequestResult;
@@ -22,14 +20,29 @@ use Kami\Rqlite\Exception\StatementException;
 use Kami\Rqlite\Exception\TransportException;
 use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\RequestFactoryInterface;
+use Psr\Http\Message\StreamFactoryInterface;
+use Psr\Http\Client\ClientInterface;
+use Psr\Http\Client\ClientExceptionInterface;
 
 /**
  * @phpstan-type Statement (non-empty-string|array{0: non-empty-string, 1: array<string, scalar|null>}|array{0: non-empty-string, ...<int, scalar|null>})
  */
 class Rqlite
 {
-    public function __construct(private readonly HttpAdapter $httpAdapter)
-    {
+    public function __construct(
+        private readonly string $baseUrl,
+        private readonly ClientInterface $httpClient,
+        private readonly RequestFactoryInterface $requestFactory,
+        private readonly StreamFactoryInterface $streamFactory,
+    ) {
+        $parts = parse_url($baseUrl);
+
+        if ($parts === false || !isset($parts['scheme'], $parts['host'])
+            || !in_array(strtolower($parts['scheme']), ['http', 'https'], true)
+            || isset($parts['query']) || isset($parts['fragment'])) {
+            throw new InvalidArgumentException('The base URL must be an absolute HTTP or HTTPS URL without a query or fragment.');
+        }
     }
 
     /**
@@ -158,19 +171,17 @@ class Rqlite
      * @throws HttpException
      * @throws TransportException
      */
-    public function backup(?BackupOptions $options = null): Body
+    public function backup(?BackupOptions $options = null): StreamInterface
     {
         $options ??= new BackupOptions();
 
-        $body = $this->sendRequest('GET', '/db/backup', [
+        return $this->sendRequest('GET', '/db/backup', [
             'fmt' => $options->format,
             'vacuum' => $options->vacuum,
             'compress' => $options->compress,
             'noleader' => $options->noLeader,
             'redirect' => $options->redirect,
         ])->getBody();
-
-        return $body instanceof Body ? $body : new Body($body);
     }
 
     /**
@@ -178,8 +189,8 @@ class Rqlite
      *
      * The format of the data is detected automatically: data starting with
      * the SQLite file magic is sent as binary, anything else as plain SQL text.
-     * A PSR-7 stream is consumed and detached; the caller must not use it
-     * afterwards.
+     * Upload streams and resources are consumed and ownership is transferred;
+     * the caller must not use them afterwards.
      *
      * @param resource|StreamInterface|string $data
      * @throws InvalidArgumentException
@@ -202,6 +213,8 @@ class Rqlite
      * initializing the underlying SQLite database from scratch.
      *
      * It is an error to call this on anything but a single-node system.
+     * Upload streams and resources are consumed and ownership is transferred;
+     * the caller must not use them afterwards.
      *
      * @param resource|StreamInterface|string $data
      * @throws InvalidArgumentException
@@ -227,19 +240,9 @@ class Rqlite
      */
     private function sendRawRequest(string $method, string $uri, array $query, $stream, string $contentType): ResponseInterface
     {
-        $response = $this->httpAdapter->send(new Request(
-            $method,
-            $uri,
-            $query,
-            ['Content-Type' => $contentType],
-            stream: $stream,
-        ));
+        $body = $stream instanceof StreamInterface ? $stream : $this->streamFactory->createStreamFromResource($stream);
 
-        if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
-            throw new HttpException($response);
-        }
-
-        return $response;
+        return $this->sendRequest($method, $uri, $query, body: $body, contentType: $contentType);
     }
 
     /**
@@ -284,6 +287,7 @@ class Rqlite
         }
 
         stream_copy_to_stream($stream, $buffer);
+        fclose($stream);
         rewind($buffer);
 
         return [$buffer, $contentType];
@@ -356,9 +360,42 @@ class Rqlite
      * @throws HttpException
      * @throws TransportException
      */
-    private function sendRequest(string $method, string $uri, array $query = [], ?array $json = null): ResponseInterface
+    private function sendRequest(
+        string $method,
+        string $uri,
+        array $query = [],
+        ?array $json = null,
+        ?StreamInterface $body = null,
+        ?string $contentType = null,
+    ): ResponseInterface
     {
-        $response = $this->httpAdapter->send(new Request($method, $uri, $query, json: $json));
+        $query = array_filter($query, static fn (mixed $value): bool => $value !== false && $value !== null);
+        $url = rtrim($this->baseUrl, '/') . '/' . ltrim($uri, '/');
+
+        if ($query !== []) {
+            $url .= '?' . http_build_query($query);
+        }
+
+        $request = $this->requestFactory->createRequest($method, $url)->withHeader('Accept', 'application/json');
+
+        if ($json !== null) {
+            $body = $this->streamFactory->createStream(json_encode($json, JSON_THROW_ON_ERROR));
+            $contentType = 'application/json';
+        }
+
+        if ($body !== null) {
+            $request = $request->withBody($body);
+        }
+
+        if ($contentType !== null) {
+            $request = $request->withHeader('Content-Type', $contentType);
+        }
+
+        try {
+            $response = $this->httpClient->sendRequest($request);
+        } catch (ClientExceptionInterface $exception) {
+            throw new TransportException($exception->getMessage(), (int) $exception->getCode(), $exception);
+        }
 
         if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
             throw new HttpException($response);

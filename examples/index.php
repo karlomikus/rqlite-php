@@ -5,7 +5,6 @@ declare(strict_types=1);
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\HttpFactory;
 use Kami\Rqlite\Adapters\LoggerAdapter;
-use Kami\Rqlite\Adapters\PsrHttpAdapter;
 use Kami\Rqlite\Exception\StatementException;
 use Kami\Rqlite\ExecuteOptions;
 use Kami\Rqlite\QueryOptions;
@@ -32,16 +31,8 @@ $logger = new Monolog\Logger('rqlite');
 $logger->pushHandler(new Monolog\Handler\StreamHandler(STDOUT, Monolog\Level::Debug));
 
 $factory = new HttpFactory();
-$adapter = new PsrHttpAdapter(
-    $baseUrl,
-    new Client(),
-    $factory,
-    $factory,
-    $factory,
-);
-$adapter = new LoggerAdapter($adapter, $logger);
-
-$rqlite = new Rqlite($adapter);
+$client = new LoggerAdapter(new Client(), $logger);
+$rqlite = new Rqlite($baseUrl, $client, $factory, $factory);
 
 echo "Connected to rqlite at {$baseUrl}\n";
 

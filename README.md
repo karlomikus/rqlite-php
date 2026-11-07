@@ -29,19 +29,16 @@ composer require karlomikus/rqlite
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\HttpFactory;
-use Kami\Rqlite\Adapters\PsrHttpAdapter;
 use Kami\Rqlite\Rqlite;
 
 $factory = new HttpFactory();
 
-$adapter = new PsrHttpAdapter(
+$rqlite = new Rqlite(
     'http://localhost:4001',
     new Client(),
     $factory,
     $factory,
-    $factory,
 );
-$rqlite = new Rqlite($adapter);
 
 $results = $rqlite->query([
     'SELECT * FROM foo',
@@ -273,9 +270,8 @@ be loaded into memory in full.
 
 ## PSR-7 interop
 
-HTTP adapters return PSR-7 responses with PSR-7 stream bodies. `backup()`
-returns a `Kami\Rqlite\Http\Body`, which also implements
-`Psr\Http\Message\StreamInterface`.
+`backup()` returns the original response's `Psr\Http\Message\StreamInterface`.
+The caller is responsible for consuming and closing it.
 
 ```php
 use Kami\Rqlite\BackupOptions;
@@ -283,11 +279,13 @@ use Kami\Rqlite\BackupOptions;
 $body = $rqlite->backup(new BackupOptions(format: 'sql'));
 
 file_put_contents('backup.sql', $body->getContents());
+$body->close();
 ```
 
 The read side works too: `load()` and `boot()` accept `StreamInterface` in
-addition to stream resources and strings. A PSR-7 stream is detached when
-possible and must not be used afterwards.
+addition to stream resources and strings. Upload streams and resources are
+consumed and ownership is transferred; do not use them afterwards. A PSR-7
+stream is detached when possible.
 
 ```php
 use GuzzleHttp\Psr7\Utils;
@@ -295,32 +293,32 @@ use GuzzleHttp\Psr7\Utils;
 $rqlite->load(Utils::streamFor(fopen('backup.sql', 'rb')));
 ```
 
-## Available adapters
+## HTTP client
 
 ### PSR-18
 
 ```php
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\HttpFactory;
-use Kami\Rqlite\Adapters\PsrHttpAdapter;
+use Kami\Rqlite\Rqlite;
 
 $factory = new HttpFactory();
 
-$adapter = new PsrHttpAdapter(
+$rqlite = new Rqlite(
     'http://localhost:4001',
     new Client([
         // Configure auth, TLS, timeouts, or a proxy here.
     ]),
     $factory,
     $factory,
-    $factory,
 );
 ```
 
-Works with any PSR-18 client and PSR-17 factories (Guzzle 7+ ships both, and
-`GuzzleHttp\Psr7\HttpFactory` implements all of them). The base URI is passed
-to the adapter, not to the client. Guzzle-specific concerns such as basic
-auth, TLS, and timeouts should be configured on the injected client.
+Works with any PSR-18 client and PSR-17 request and stream factories (Guzzle
+7+ ships both, and `GuzzleHttp\Psr7\HttpFactory` implements both factories).
+The base URL must be an absolute HTTP or HTTPS URL without a query or fragment;
+an optional path prefix is retained. Configure auth, TLS, and timeouts on the
+injected client.
 
 Redirect handling is left to the client; Guzzle's PSR-18 `sendRequest()`
 implementation does not follow redirects and returns non-2xx responses
@@ -332,35 +330,18 @@ incrementally when the client supports it.
 ```php
 use Kami\Rqlite\Adapters\LoggerAdapter;
 
-$adapter = new LoggerAdapter($adapter, $logger);
+$client = new LoggerAdapter(new Client(), $logger);
+$rqlite = new Rqlite('http://localhost:4001', $client, $factory, $factory);
 ```
 
-`LoggerAdapter` logs the request method, URI, query parameters, and body at
-debug level, plus the response status and duration. It rethrows transport
-errors after logging them. Request bodies are logged as-is, so avoid logging
-sensitive values at debug level.
+`LoggerAdapter` is a PSR-18 decorator. It logs the request method and URI at
+debug level, plus the response status and duration. URI user info, query and
+fragment are omitted; bodies and headers are never read or logged. Transport
+errors are logged by exception type and rethrown. URI paths may still contain
+sensitive information.
 
-### Custom adapters
-
-Implement `Kami\Rqlite\HttpAdapter`:
-
-```php
-use Kami\Rqlite\Http\Request;
-use Kami\Rqlite\HttpAdapter;
-use Psr\Http\Message\ResponseInterface;
-
-final class MyAdapter implements HttpAdapter
-{
-    public function send(Request $request): ResponseInterface
-    {
-        // Return PSR-7 responses, including non-2xx responses.
-        // Throw TransportException when the request cannot be completed.
-    }
-}
-```
-
-Response bodies must be readable PSR-7 streams for incremental parsing. The
-PSR-18 adapter returns the client's original response without wrapping it.
+Any PSR-18 client or decorator can be injected directly. Response bodies must
+be readable PSR-7 streams for incremental parsing.
 
 ## Error handling
 
@@ -408,7 +389,6 @@ rather than a float. Convert it to the type your schema expects.
 The following rqlite features are not implemented yet:
 
 - Non-associative query and request results (`columns` / `types` / `values`)
-- Backup, load, and boot endpoints
 - `/debug/vars`, `/nodes`, `/readyz`, `/remove`, and version lookup
 - Connection retry and load balancing across multiple nodes
 - Single-statement helpers

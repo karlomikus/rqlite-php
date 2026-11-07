@@ -16,12 +16,12 @@
 ## Library layout
 
 - Single composer library, `Kami\Rqlite\` → `src/`. Entrypoint is `Rqlite.php`; the rest is options objects, result objects, exceptions, and `Http/` plumbing.
-- Transport goes through `HttpAdapter::send(): Psr\Http\Message\ResponseInterface`; `Http\Body` implements PSR-7 `StreamInterface`. Built-in adapters: `Adapters\PsrHttpAdapter` (PSR-18 client + PSR-17 factories) and `Adapters\LoggerAdapter` (decorator).
+- Transport uses a PSR-18 client and PSR-17 request and stream factories. `Adapters\LoggerAdapter` is a PSR-18 decorator; `backup()` returns a PSR-7 stream.
 
 ## rqlite client quirks (easy to break)
 
 - Responses are parsed as streams: `query()`/`execute()`/`request()` return a single-pass `Results` iterator and rows are generators. Consume rows before advancing to the next result; never `iterator_to_array()` without consuming. Decoding and statement errors throw during iteration, not at call time.
-- `Http\Request::query()` must omit `false` and `null` option values: rqlite treats the mere presence of boolean query flags (`timings`, `transaction`, `queue`, ...) as true, so a disabled flag must not be sent at all.
+- Requests must omit `false` and `null` option values: rqlite treats the mere presence of boolean query flags (`timings`, `transaction`, `queue`, ...) as true, so a disabled flag must not be sent at all.
 - New endpoint options go on `QueryOptions`/`ExecuteOptions`/`RequestOptions`, not as new method parameters.
 
 ## Examples
