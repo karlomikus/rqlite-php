@@ -25,7 +25,7 @@ use Psr\Http\Message\UriInterface;
  * PSR-17 factories. The base URL is owned by this adapter, so the injected
  * client does not need one configured.
  */
-class Psr18 implements HttpAdapter
+class PsrHttpAdapter implements HttpAdapter
 {
     public function __construct(
         private readonly string $baseUrl,

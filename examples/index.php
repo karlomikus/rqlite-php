@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\HttpFactory;
-use Kami\Rqlite\Adapters\Psr18;
+use Kami\Rqlite\Adapters\PsrHttpAdapter;
 use Kami\Rqlite\Exception\StatementException;
 use Kami\Rqlite\ExecuteOptions;
 use Kami\Rqlite\QueryOptions;
@@ -29,7 +29,7 @@ $baseUrl = getenv('RQLITE_URL') ?: 'http://localhost:4001';
 
 $factory = new HttpFactory();
 
-$rqlite = new Rqlite(new Psr18(
+$rqlite = new Rqlite(new PsrHttpAdapter(
     $baseUrl,
     new Client(),
     $factory,

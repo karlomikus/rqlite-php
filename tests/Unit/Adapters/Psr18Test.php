@@ -8,7 +8,7 @@ use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\HttpFactory;
 use GuzzleHttp\Psr7\Response as GuzzleResponse;
-use Kami\Rqlite\Adapters\Psr18;
+use Kami\Rqlite\Adapters\PsrHttpAdapter;
 use Kami\Rqlite\Http\Request;
 
 it('sends requests and returns a response', function () {
@@ -18,7 +18,7 @@ it('sends requests and returns a response', function () {
     $stack->push(Middleware::history($history));
     $client = new Client(['handler' => $stack]);
     $factory = new HttpFactory();
-    $adapter = new Psr18('http://localhost:4001', $client, $factory, $factory, $factory);
+    $adapter = new PsrHttpAdapter('http://localhost:4001', $client, $factory, $factory, $factory);
 
     $response = $adapter->send(new Request('POST', '/db/query', ['timings' => true, 'empty' => null], json: ['SELECT 1']));
 
@@ -39,7 +39,7 @@ it('returns non-2xx responses instead of throwing', function () {
     $mock = new MockHandler([new GuzzleResponse(500, [], 'server error')]);
     $client = new Client(['handler' => HandlerStack::create($mock)]);
     $factory = new HttpFactory();
-    $adapter = new Psr18('http://localhost:4001', $client, $factory, $factory, $factory);
+    $adapter = new PsrHttpAdapter('http://localhost:4001', $client, $factory, $factory, $factory);
 
     $response = $adapter->send(new Request('GET', '/status'));
 
@@ -56,7 +56,7 @@ it('wraps PSR-18 transport errors', function () {
     ]);
     $client = new Client(['handler' => HandlerStack::create($mock)]);
     $factory = new HttpFactory();
-    $adapter = new Psr18('http://localhost:4001', $client, $factory, $factory, $factory);
+    $adapter = new PsrHttpAdapter('http://localhost:4001', $client, $factory, $factory, $factory);
 
     expect(fn () => $adapter->send(new Request('GET', '/status')))
         ->toThrow(Kami\Rqlite\Exception\TransportException::class);

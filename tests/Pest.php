@@ -2,7 +2,7 @@
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\HttpFactory;
-use Kami\Rqlite\Adapters\Psr18;
+use Kami\Rqlite\Adapters\PsrHttpAdapter;
 use Kami\Rqlite\ExecuteOptions;
 use Kami\Rqlite\QueryOptions;
 use Kami\Rqlite\Rqlite;
@@ -81,7 +81,7 @@ function integration_client(): Rqlite
     $baseUrl = getenv('RQLITE_URL') ?: 'http://myrqlite-service-1:4001';
     $factory = new HttpFactory();
 
-    return new Rqlite(new Psr18(
+    return new Rqlite(new PsrHttpAdapter(
         $baseUrl,
         new Client(['stream' => true]),
         $factory,

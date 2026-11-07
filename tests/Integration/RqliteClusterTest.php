@@ -8,14 +8,14 @@ use Kami\Rqlite\Rqlite;
 use Kami\Rqlite\QueryOptions;
 use Kami\Rqlite\ExecuteOptions;
 use Kami\Rqlite\RequestOptions;
-use Kami\Rqlite\Adapters\Psr18;
+use Kami\Rqlite\Adapters\PsrHttpAdapter;
 use Kami\Rqlite\ReadConsistencyLevel;
 use Kami\Rqlite\Result\RequestResult;
 
 it('loads the base schema and reads replicated rows from every node', function () {
     $factory = new HttpFactory();
     $clients = array_map(
-        static fn (string $url): Rqlite => new Rqlite(new Psr18(
+        static fn (string $url): Rqlite => new Rqlite(new PsrHttpAdapter(
             $url,
             new Client(['stream' => true]),
             $factory,
