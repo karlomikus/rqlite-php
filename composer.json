@@ -23,7 +23,7 @@
         "psr/log": "^3.0"
     },
     "suggest": {
-        "guzzlehttp/guzzle": "PSR-18 client and PSR-17 factories"
+        "guzzlehttp/guzzle": "Enables Rqlite::withGuzzle() with a PSR-18 client and PSR-17 factories"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

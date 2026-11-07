@@ -1,4 +1,5 @@
 # Unreleased
+- Added `Rqlite::withGuzzle()` for convenient setup with an optional configured PSR-18 client.
 - **Breaking:** `Rqlite` now accepts a base URL, PSR-18 client, and PSR-17 request and stream factories. Removed the custom HTTP adapters and `Http\Request`.
 - **Breaking:** `backup()` returns the original PSR-7 stream; `Http\Body` has been removed. Use `getContents()` instead of `contents()`.
 - **Breaking:** `HttpException::$response` is a PSR-7 response; `Http\Response` has been removed. Use PSR-7 methods to inspect responses.

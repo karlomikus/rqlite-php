@@ -13,6 +13,33 @@ use Kami\Rqlite\Exception\TransportException;
 use Kami\Rqlite\QueryOptions;
 use Kami\Rqlite\Rqlite;
 
+it('creates a Guzzle-backed client with the default transport', function (): void {
+    expect(Rqlite::withGuzzle('http://localhost:4001'))->toBeInstanceOf(Rqlite::class);
+});
+
+it('uses an injected PSR-18 client with Guzzle request factories', function (): void {
+    $history = [];
+    $stack = HandlerStack::create(new MockHandler([new Response(200, [], '{"store":{"ready":true}}')]));
+    $stack->push(Middleware::history($history));
+    $client = new Client(['handler' => $stack, 'stream' => true]);
+    $rqlite = Rqlite::withGuzzle('http://localhost:4001/prefix', $client);
+
+    expect($rqlite->status())->toBe(['store' => ['ready' => true]]);
+    expect((string) $history[0]['request']->getUri())->toBe('http://localhost:4001/prefix/status');
+    expect($history[0]['request']->getHeaderLine('Accept'))->toBe('application/json');
+});
+
+it('validates the base URL in the Guzzle factory', function (): void {
+    expect(fn () => Rqlite::withGuzzle('/relative'))->toThrow(InvalidArgumentException::class);
+});
+
+it('accepts a PSR-18 client that is not Guzzle', function (): void {
+    $client = Mockery::mock(\Psr\Http\Client\ClientInterface::class);
+    $client->shouldReceive('sendRequest')->once()->andReturn(new Response(200, [], '{"ready":true}'));
+
+    expect(Rqlite::withGuzzle('http://localhost:4001', $client)->status())->toBe(['ready' => true]);
+});
+
 it('sends an absolute PSR-7 JSON request with a base path and filtered flags', function (): void {
     $history = [];
     $stack = HandlerStack::create(new MockHandler([new Response(200, [], '{"results":[]}')]));

@@ -19,7 +19,7 @@ result objects, query/execute/request options, and structured rqlite errors.
 ## Installation
 
 ```bash
-composer require karlomikus/rqlite
+composer require karlomikus/rqlite guzzlehttp/guzzle
 ```
 
 ## Quick start
@@ -27,18 +27,9 @@ composer require karlomikus/rqlite
 ```php
 <?php
 
-use GuzzleHttp\Client;
-use GuzzleHttp\Psr7\HttpFactory;
 use Kami\Rqlite\Rqlite;
 
-$factory = new HttpFactory();
-
-$rqlite = new Rqlite(
-    'http://localhost:4001',
-    new Client(),
-    $factory,
-    $factory,
-);
+$rqlite = Rqlite::withGuzzle('http://localhost:4001');
 
 $results = $rqlite->query([
     'SELECT * FROM foo',
@@ -297,6 +288,23 @@ $rqlite->load(Utils::streamFor(fopen('backup.sql', 'rb')));
 
 ### PSR-18
 
+`Rqlite::withGuzzle($baseUrl)` uses Guzzle's HTTP client and PSR-17 factories.
+Its default client enables response streaming. To configure Guzzle, pass a
+client as the second argument (set `stream` yourself if needed):
+
+```php
+use GuzzleHttp\Client;
+use Kami\Rqlite\Rqlite;
+
+$rqlite = Rqlite::withGuzzle('http://localhost:4001', new Client([
+    'stream' => true,
+    'timeout' => 10,
+]));
+```
+
+Guzzle is optional. Alternatively, inject any PSR-18 client and PSR-17 request
+and stream factories directly:
+
 ```php
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\HttpFactory;
@@ -330,8 +338,8 @@ incrementally when the client supports it.
 ```php
 use Kami\Rqlite\Adapters\LoggerAdapter;
 
-$client = new LoggerAdapter(new Client(), $logger);
-$rqlite = new Rqlite('http://localhost:4001', $client, $factory, $factory);
+$client = new LoggerAdapter(new Client(['stream' => true]), $logger);
+$rqlite = Rqlite::withGuzzle('http://localhost:4001', $client);
 ```
 
 `LoggerAdapter` is a PSR-18 decorator. It logs the request method and URI at

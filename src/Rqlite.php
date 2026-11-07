@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Kami\Rqlite;
 
 use Generator;
+use GuzzleHttp\Client;
+use GuzzleHttp\Psr7\HttpFactory;
 use InvalidArgumentException;
 use RuntimeException;
 use Kami\Rqlite\Http\JsonStream;
@@ -43,6 +45,27 @@ class Rqlite
             || isset($parts['query']) || isset($parts['fragment'])) {
             throw new InvalidArgumentException('The base URL must be an absolute HTTP or HTTPS URL without a query or fragment.');
         }
+    }
+
+    /**
+     * Create a client using Guzzle's PSR-17 factories and, by default, a
+     * Guzzle HTTP client configured to stream responses.
+     *
+     * Pass a configured PSR-18 client to customize transport or add middleware.
+     * Install guzzlehttp/guzzle to use the default client and factories.
+     *
+     * @throws InvalidArgumentException
+     * @throws RuntimeException If the required Guzzle packages are not installed.
+     */
+    public static function withGuzzle(string $baseUrl, ?ClientInterface $client = null): self
+    {
+        if (!class_exists(HttpFactory::class) || ($client === null && !class_exists(Client::class))) {
+            throw new RuntimeException('Guzzle is required for Rqlite::withGuzzle(). Install it with composer require guzzlehttp/guzzle.');
+        }
+
+        $factory = new HttpFactory();
+
+        return new self($baseUrl, $client ?? new Client(['stream' => true]), $factory, $factory);
     }
 
     /**

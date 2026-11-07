@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use GuzzleHttp\Client;
-use GuzzleHttp\Psr7\HttpFactory;
 use Kami\Rqlite\Adapters\LoggerAdapter;
 use Kami\Rqlite\Exception\StatementException;
 use Kami\Rqlite\ExecuteOptions;
@@ -30,9 +29,8 @@ $baseUrl = getenv('RQLITE_URL') ?: 'http://localhost:4001';
 $logger = new Monolog\Logger('rqlite');
 $logger->pushHandler(new Monolog\Handler\StreamHandler(STDOUT, Monolog\Level::Debug));
 
-$factory = new HttpFactory();
-$client = new LoggerAdapter(new Client(), $logger);
-$rqlite = new Rqlite($baseUrl, $client, $factory, $factory);
+// $client = new LoggerAdapter(new Client(['stream' => true]), $logger);
+$rqlite = Rqlite::withGuzzle($baseUrl);
 
 echo "Connected to rqlite at {$baseUrl}\n";
 
