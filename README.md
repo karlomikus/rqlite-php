@@ -1,9 +1,8 @@
 # PHP Client for Rqlite
 
 A PHP client for [rqlite](https://rqlite.io), the lightweight distributed
-database built on SQLite. It supports multiple HTTP adapters, streaming
-associative results, typed result objects, query/execute/request options, and
-structured rqlite errors.
+database built on SQLite. It supports streaming associative results, typed
+result objects, query/execute/request options, and structured rqlite errors.
 
 [![PHP Version](https://img.shields.io/badge/PHP-%3E%3D8.2-blue)](https://php.net)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE.md)
@@ -15,8 +14,7 @@ structured rqlite errors.
 ## Requirements
 
 - PHP 8.2, 8.3, 8.4 or 8.5
-- One HTTP adapter:
-  - Guzzle 7 for the Guzzle adapter
+- A PSR-18 HTTP client with PSR-17 factories (Guzzle 7+ ships both)
 
 ## Installation
 
@@ -30,10 +28,19 @@ composer require karlomikus/rqlite
 <?php
 
 use GuzzleHttp\Client;
-use Kami\Rqlite\Adapters\Guzzle;
+use GuzzleHttp\Psr7\HttpFactory;
+use Kami\Rqlite\Adapters\Psr18;
 use Kami\Rqlite\Rqlite;
 
-$adapter = new Guzzle(new Client(['base_uri' => 'http://localhost:4001']));
+$factory = new HttpFactory();
+
+$adapter = new Psr18(
+    'http://localhost:4001',
+    new Client(),
+    $factory,
+    $factory,
+    $factory,
+);
 $rqlite = new Rqlite($adapter);
 
 $results = $rqlite->query([
@@ -290,23 +297,35 @@ $rqlite->load(Utils::streamFor(fopen('backup.sql', 'rb')));
 
 ## Available adapters
 
-### Guzzle
+### PSR-18
 
 ```php
 use GuzzleHttp\Client;
-use Kami\Rqlite\Adapters\Guzzle;
+use GuzzleHttp\Psr7\HttpFactory;
+use Kami\Rqlite\Adapters\Psr18;
 
-$httpClient = new Client([
-    'base_uri' => 'http://localhost:4001',
-    // Configure auth, TLS, timeouts, or a proxy here.
-]);
+$factory = new HttpFactory();
 
-$adapter = new Guzzle($httpClient);
+$adapter = new Psr18(
+    'http://localhost:4001',
+    new Client([
+        // Configure auth, TLS, timeouts, or a proxy here.
+    ]),
+    $factory,
+    $factory,
+    $factory,
+);
 ```
 
-The adapter uses Guzzle with `http_errors` and redirects disabled, and streams
-the response body. Guzzle-specific concerns such as basic auth, TLS, and
-timeouts should be configured on the injected client.
+Works with any PSR-18 client and PSR-17 factories (Guzzle 7+ ships both, and
+`GuzzleHttp\Psr7\HttpFactory` implements all of them). The base URI is passed
+to the adapter, not to the client. Guzzle-specific concerns such as basic
+auth, TLS, and timeouts should be configured on the injected client.
+
+Redirect handling is left to the client; Guzzle's PSR-18 `sendRequest()`
+implementation does not follow redirects and returns non-2xx responses
+instead of throwing, as the PSR-18 spec requires. Response bodies are streamed
+incrementally when the client supports it.
 
 ### PSR-3 logger wrapper
 

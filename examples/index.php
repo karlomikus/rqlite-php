@@ -3,7 +3,8 @@
 declare(strict_types=1);
 
 use GuzzleHttp\Client;
-use Kami\Rqlite\Adapters\Guzzle;
+use GuzzleHttp\Psr7\HttpFactory;
+use Kami\Rqlite\Adapters\Psr18;
 use Kami\Rqlite\Exception\StatementException;
 use Kami\Rqlite\ExecuteOptions;
 use Kami\Rqlite\QueryOptions;
@@ -26,7 +27,15 @@ require __DIR__ . '/vendor/autoload.php';
 
 $baseUrl = getenv('RQLITE_URL') ?: 'http://localhost:4001';
 
-$rqlite = new Rqlite(new Guzzle(new Client(['base_uri' => $baseUrl])));
+$factory = new HttpFactory();
+
+$rqlite = new Rqlite(new Psr18(
+    $baseUrl,
+    new Client(),
+    $factory,
+    $factory,
+    $factory,
+));
 
 echo "Connected to rqlite at {$baseUrl}\n";
 

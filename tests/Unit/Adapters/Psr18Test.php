@@ -6,8 +6,9 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
+use GuzzleHttp\Psr7\HttpFactory;
 use GuzzleHttp\Psr7\Response as GuzzleResponse;
-use Kami\Rqlite\Adapters\Guzzle;
+use Kami\Rqlite\Adapters\Psr18;
 use Kami\Rqlite\Http\Request;
 
 it('sends requests and returns a response', function () {
@@ -15,8 +16,9 @@ it('sends requests and returns a response', function () {
     $history = [];
     $stack = HandlerStack::create($mock);
     $stack->push(Middleware::history($history));
-    $client = new Client(['handler' => $stack, 'base_uri' => 'http://localhost:4001']);
-    $adapter = new Guzzle($client);
+    $client = new Client(['handler' => $stack]);
+    $factory = new HttpFactory();
+    $adapter = new Psr18('http://localhost:4001', $client, $factory, $factory, $factory);
 
     $response = $adapter->send(new Request('POST', '/db/query', ['timings' => true, 'empty' => null], json: ['SELECT 1']));
 
@@ -35,8 +37,9 @@ it('sends requests and returns a response', function () {
 
 it('returns non-2xx responses instead of throwing', function () {
     $mock = new MockHandler([new GuzzleResponse(500, [], 'server error')]);
-    $client = new Client(['handler' => HandlerStack::create($mock), 'base_uri' => 'http://localhost:4001']);
-    $adapter = new Guzzle($client);
+    $client = new Client(['handler' => HandlerStack::create($mock)]);
+    $factory = new HttpFactory();
+    $adapter = new Psr18('http://localhost:4001', $client, $factory, $factory, $factory);
 
     $response = $adapter->send(new Request('GET', '/status'));
 
@@ -44,15 +47,16 @@ it('returns non-2xx responses instead of throwing', function () {
     expect($response->text())->toBe('server error');
 });
 
-it('wraps guzzle transport errors', function () {
+it('wraps PSR-18 transport errors', function () {
     $mock = new MockHandler([
         new GuzzleHttp\Exception\ConnectException(
             'connection refused',
             new GuzzleHttp\Psr7\Request('GET', 'http://localhost:4001/status'),
         ),
     ]);
-    $client = new Client(['handler' => HandlerStack::create($mock), 'base_uri' => 'http://localhost:4001']);
-    $adapter = new Guzzle($client);
+    $client = new Client(['handler' => HandlerStack::create($mock)]);
+    $factory = new HttpFactory();
+    $adapter = new Psr18('http://localhost:4001', $client, $factory, $factory, $factory);
 
     expect(fn () => $adapter->send(new Request('GET', '/status')))
         ->toThrow(Kami\Rqlite\Exception\TransportException::class);
