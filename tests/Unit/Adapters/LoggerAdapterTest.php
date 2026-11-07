@@ -3,22 +3,27 @@
 declare(strict_types=1);
 
 use Kami\Rqlite\Http\Request;
-use Kami\Rqlite\Http\Response;
+use GuzzleHttp\Psr7\Response;
 use Kami\Rqlite\HttpAdapter;
 use Kami\Rqlite\Adapters\LoggerAdapter;
 use Kami\Rqlite\Exception\TransportException;
 use Psr\Log\LoggerInterface;
+use Psr\Http\Message\ResponseInterface;
 
 it('logs requests and responses', function (): void {
     $baseAdapter = Mockery::mock(HttpAdapter::class);
-    $baseAdapter->shouldReceive('send')->once()->andReturn(new Response(200));
+    $response = new Response(200);
+    $baseAdapter->shouldReceive('send')->once()->andReturn($response);
 
     $logger = Mockery::mock(LoggerInterface::class);
-    $logger->shouldReceive('debug')->twice();
+    $logger->shouldReceive('debug')->once()->with('rqlite request', Mockery::type('array'));
+    $logger->shouldReceive('debug')->once()->with('rqlite response', Mockery::on(
+        static fn (array $context): bool => $context['status_code'] === 200,
+    ));
 
     $adapter = new LoggerAdapter($baseAdapter, $logger);
 
-    expect($adapter->send(new Request('GET', '/status'))->statusCode)->toBe(200);
+    expect($adapter->send(new Request('GET', '/status')))->toBe($response);
 });
 
 it('logs and rethrows transport errors', function (): void {
@@ -31,6 +36,6 @@ it('logs and rethrows transport errors', function (): void {
 
     $adapter = new LoggerAdapter($baseAdapter, $logger);
 
-    expect(fn (): \Kami\Rqlite\Http\Response => $adapter->send(new Request('GET', '/status')))
+    expect(fn (): ResponseInterface => $adapter->send(new Request('GET', '/status')))
         ->toThrow(TransportException::class);
 });

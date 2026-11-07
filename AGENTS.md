@@ -1,6 +1,7 @@
 # AGENTS
 
 - Run PHP via Docker only: `docker compose run --rm php COMMAND` (repo is mounted at `/app`). Install deps with `docker compose run --rm php composer install`.
+- While in 0.x.x version breaking changes are expected, the library is intended to be stable on 1.0.0 release.
 
 ## Checks
 
@@ -15,7 +16,7 @@
 ## Library layout
 
 - Single composer library, `Kami\Rqlite\` → `src/`. Entrypoint is `Rqlite.php`; the rest is options objects, result objects, exceptions, and `Http/` plumbing.
-- Transport goes through `HttpAdapter::send(): Http\Response`; `Http\Body` implements PSR-7 `StreamInterface`. Built-in adapters: `Adapters\PsrHttpAdapter` (PSR-18 client + PSR-17 factories) and `Adapters\LoggerAdapter` (decorator).
+- Transport goes through `HttpAdapter::send(): Psr\Http\Message\ResponseInterface`; `Http\Body` implements PSR-7 `StreamInterface`. Built-in adapters: `Adapters\PsrHttpAdapter` (PSR-18 client + PSR-17 factories) and `Adapters\LoggerAdapter` (decorator).
 
 ## rqlite client quirks (easy to break)
 

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Kami\Rqlite\Exception;
 
-use Kami\Rqlite\Http\Response;
+use Psr\Http\Message\ResponseInterface;
 
 /**
  * Thrown when rqlite responds with a non-2xx HTTP status.
@@ -15,13 +15,13 @@ use Kami\Rqlite\Http\Response;
 final class HttpException extends RqliteException
 {
     public function __construct(
-        public readonly Response $response,
+        public readonly ResponseInterface $response,
         ?string $message = null,
         ?\Throwable $previous = null,
     ) {
         parent::__construct(
-            $message ?? sprintf('rqlite returned HTTP status %d', $response->statusCode),
-            $response->statusCode,
+            $message ?? sprintf('rqlite returned HTTP status %d', $response->getStatusCode()),
+            $response->getStatusCode(),
             $previous,
         );
     }

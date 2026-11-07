@@ -1,4 +1,5 @@
 # Unreleased
+- **Breaking:** `HttpAdapter::send()` and `HttpException::$response` now use PSR-7 `ResponseInterface`; `Http\Response` has been removed. Use PSR-7 methods to inspect responses.
 - Removed the Curl and File adapters. The Guzzle adapter is now the only built-in HTTP adapter
 - Removed the `ext-curl` suggestion from `composer.json`
 - Changed `Http\Body` to implement `Psr\Http\Message\StreamInterface`, so response and backup bodies interoperate with PSR-7 aware libraries

@@ -10,7 +10,6 @@ use RuntimeException;
 use Kami\Rqlite\Http\Body;
 use Kami\Rqlite\Http\JsonStream;
 use Kami\Rqlite\Http\Request;
-use Kami\Rqlite\Http\Response;
 use Kami\Rqlite\Result\AssociativeQueryResult;
 use Kami\Rqlite\Result\ExecuteResult;
 use Kami\Rqlite\Result\RequestResult;
@@ -22,6 +21,7 @@ use Kami\Rqlite\Exception\RqliteException;
 use Kami\Rqlite\Exception\StatementException;
 use Kami\Rqlite\Exception\TransportException;
 use Psr\Http\Message\StreamInterface;
+use Psr\Http\Message\ResponseInterface;
 
 /**
  * @phpstan-type Statement (non-empty-string|array{0: non-empty-string, 1: array<string, scalar|null>}|array{0: non-empty-string, ...<int, scalar|null>})
@@ -64,7 +64,7 @@ class Rqlite
 
         /** @var Results<AssociativeQueryResult> $results */
         $results = new Results();
-        $results->results = $this->streamQueryResponse($response->body, $results);
+        $results->results = $this->streamQueryResponse($response->getBody(), $results);
 
         return $results;
     }
@@ -96,7 +96,7 @@ class Rqlite
 
         /** @var Results<ExecuteResult> $results */
         $results = new Results();
-        $results->results = $this->streamExecuteResponse($response->body, $results);
+        $results->results = $this->streamExecuteResponse($response->getBody(), $results);
 
         return $results;
     }
@@ -131,7 +131,7 @@ class Rqlite
 
         /** @var Results<RequestResult> $results */
         $results = new Results();
-        $results->results = $this->streamRequestResponse($response->body, $results);
+        $results->results = $this->streamRequestResponse($response->getBody(), $results);
 
         return $results;
     }
@@ -146,7 +146,7 @@ class Rqlite
      */
     public function status(): array
     {
-        return $this->decodeDocument($this->sendRequest('GET', '/status')->body);
+        return $this->decodeDocument($this->sendRequest('GET', '/status')->getBody());
     }
 
     /**
@@ -162,13 +162,15 @@ class Rqlite
     {
         $options ??= new BackupOptions();
 
-        return $this->sendRequest('GET', '/db/backup', [
+        $body = $this->sendRequest('GET', '/db/backup', [
             'fmt' => $options->format,
             'vacuum' => $options->vacuum,
             'compress' => $options->compress,
             'noleader' => $options->noLeader,
             'redirect' => $options->redirect,
-        ])->body;
+        ])->getBody();
+
+        return $body instanceof Body ? $body : new Body($body);
     }
 
     /**
@@ -223,7 +225,7 @@ class Rqlite
      * @throws HttpException
      * @throws TransportException
      */
-    private function sendRawRequest(string $method, string $uri, array $query, $stream, string $contentType): Response
+    private function sendRawRequest(string $method, string $uri, array $query, $stream, string $contentType): ResponseInterface
     {
         $response = $this->httpAdapter->send(new Request(
             $method,
@@ -233,7 +235,7 @@ class Rqlite
             stream: $stream,
         ));
 
-        if (!$response->isSuccessful()) {
+        if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
             throw new HttpException($response);
         }
 
@@ -354,11 +356,11 @@ class Rqlite
      * @throws HttpException
      * @throws TransportException
      */
-    private function sendRequest(string $method, string $uri, array $query = [], ?array $json = null): Response
+    private function sendRequest(string $method, string $uri, array $query = [], ?array $json = null): ResponseInterface
     {
         $response = $this->httpAdapter->send(new Request($method, $uri, $query, json: $json));
 
-        if (!$response->isSuccessful()) {
+        if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
             throw new HttpException($response);
         }
 
@@ -371,7 +373,7 @@ class Rqlite
      * @throws RqliteException
      * @throws StatementException
      */
-    private function streamQueryResponse(Body $body, Results $results): Generator
+    private function streamQueryResponse(StreamInterface $body, Results $results): Generator
     {
         $json = new JsonStream($body);
         $resultsSeen = false;
@@ -540,7 +542,7 @@ class Rqlite
      * @throws RqliteException
      * @throws StatementException
      */
-    private function streamExecuteResponse(Body $body, Results $results): Generator
+    private function streamExecuteResponse(StreamInterface $body, Results $results): Generator
     {
         $json = new JsonStream($body);
         $resultsSeen = false;
@@ -653,7 +655,7 @@ class Rqlite
      * @throws RqliteException
      * @throws StatementException
      */
-    private function streamRequestResponse(Body $body, Results $results): Generator
+    private function streamRequestResponse(StreamInterface $body, Results $results): Generator
     {
         $json = new JsonStream($body);
         $resultsSeen = false;
@@ -841,7 +843,7 @@ class Rqlite
      * @return array<mixed>
      * @throws DecodingException
      */
-    private function decodeDocument(Body $body): array
+    private function decodeDocument(StreamInterface $body): array
     {
         $json = new JsonStream($body);
         $decoded = $json->readValue();

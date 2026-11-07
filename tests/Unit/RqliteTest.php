@@ -11,7 +11,7 @@ use Kami\Rqlite\BackupOptions;
 use Kami\Rqlite\LoadOptions;
 use Kami\Rqlite\ReadConsistencyLevel;
 use Kami\Rqlite\Http\Request;
-use Kami\Rqlite\Http\Response;
+use GuzzleHttp\Psr7\Response;
 use Kami\Rqlite\HttpAdapter;
 use Kami\Rqlite\Result\SQLiteError;
 use Kami\Rqlite\Result\ExecuteResult;
@@ -23,6 +23,7 @@ use Kami\Rqlite\Exception\StatementException;
 use Kami\Rqlite\Exception\TransportException;
 use Kami\Rqlite\Result\AssociativeQueryResult;
 use GuzzleHttp\Psr7\Utils;
+use GuzzleHttp\Psr7\NoSeekStream;
 
 describe('Query', function (): void {
     it('can create simple query', function (): void {
@@ -405,19 +406,39 @@ describe('Request', function (): void {
 });
 
 describe('HTTP transport errors', function (): void {
+    it('accepts only 2xx responses for regular and raw requests', function (int $status, bool $successful): void {
+        $adapter = Mockery::mock(HttpAdapter::class);
+        $adapter->shouldReceive('send')->twice()->andReturn(new Response($status, [], '{}'));
+        $rqlite = new Rqlite($adapter);
+
+        if ($successful) {
+            expect($rqlite->status())->toBe([]);
+            $rqlite->load('SELECT 1');
+        } else {
+            expect(fn (): array => $rqlite->status())->toThrow(HttpException::class);
+            expect(fn () => $rqlite->load('SELECT 1'))->toThrow(HttpException::class);
+        }
+    })->with([[199, false], [200, true], [299, true], [300, false]]);
+
     it('throws an http exception for non-2xx responses', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
+        $response = new Response(503, ['X-Test' => ['one', 'two']], 'service unavailable', '1.1', 'Unavailable');
         $adapter->shouldReceive('send')
             ->once()
-            ->andReturn(new Response(503, [], 'service unavailable'));
+            ->andReturn($response);
 
         $rqlite = new Rqlite($adapter);
 
         try {
             $rqlite->query(['SELECT * FROM foo']);
         } catch (HttpException $exception) {
-            expect($exception->response->statusCode)->toBe(503);
-            expect($exception->response->text())->toBe('service unavailable');
+            expect($exception->response)->toBe($response);
+            expect($exception->getCode())->toBe(503);
+            expect($exception->getMessage())->toBe('rqlite returned HTTP status 503');
+            expect($exception->response->getStatusCode())->toBe(503);
+            expect($exception->response->getHeaderLine('x-test'))->toBe('one, two');
+            expect($exception->response->getReasonPhrase())->toBe('Unavailable');
+            expect($exception->response->getBody()->getContents())->toBe('service unavailable');
 
             return;
         }
@@ -449,6 +470,26 @@ describe('HTTP transport errors', function (): void {
     });
 });
 
+it('parses a non-seekable PSR-7 response stream lazily', function (): void {
+    $largeValue = str_repeat('x', 20000);
+    $source = Utils::streamFor('{"results":[{"types":{"value":"text"},"rows":[{"value":"' . $largeValue . '"}]}]}');
+    $body = new NoSeekStream($source);
+    $adapter = Mockery::mock(HttpAdapter::class);
+    $adapter->shouldReceive('send')->once()->andReturn(new Response(200, [], $body));
+
+    $results = (new Rqlite($adapter))->query(['SELECT value']);
+    expect($source->tell())->toBe(0);
+
+    foreach ($results as $result) {
+        expect($source->tell())->toBeLessThan($source->getSize());
+        foreach ($result->rows as $row) {
+            expect($row)->toBe(['value' => $largeValue]);
+        }
+    }
+
+    expect($source->eof())->toBeTrue();
+});
+
 describe('Status', function (): void {
     it('fetches the server status', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
@@ -477,6 +518,17 @@ describe('Status', function (): void {
 });
 
 describe('Backup', function (): void {
+    it('returns a readable backup body that closes the original PSR-7 stream', function (): void {
+        $source = Utils::streamFor('backup data');
+        $adapter = Mockery::mock(HttpAdapter::class);
+        $adapter->shouldReceive('send')->once()->andReturn(new Response(200, [], $source));
+
+        $body = (new Rqlite($adapter))->backup();
+        expect($body->getContents())->toBe('backup data');
+        $body->close();
+        expect($source->isReadable())->toBeFalse();
+    });
+
     it('sends a backup request and returns the body', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')

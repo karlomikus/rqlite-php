@@ -29,12 +29,12 @@ composer require karlomikus/rqlite
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\HttpFactory;
-use Kami\Rqlite\PsrHttpAdapter;
+use Kami\Rqlite\Adapters\PsrHttpAdapter;
 use Kami\Rqlite\Rqlite;
 
 $factory = new HttpFactory();
 
-$adapter = new Psr18(
+$adapter = new PsrHttpAdapter(
     'http://localhost:4001',
     new Client(),
     $factory,
@@ -273,9 +273,9 @@ be loaded into memory in full.
 
 ## PSR-7 interop
 
-`Kami\Rqlite\Http\Body` implements `Psr\Http\Message\StreamInterface`. The
-`backup()` body and every response body therefore interoperate with PSR-7
-aware libraries.
+HTTP adapters return PSR-7 responses with PSR-7 stream bodies. `backup()`
+returns a `Kami\Rqlite\Http\Body`, which also implements
+`Psr\Http\Message\StreamInterface`.
 
 ```php
 use Kami\Rqlite\BackupOptions;
@@ -302,11 +302,11 @@ $rqlite->load(Utils::streamFor(fopen('backup.sql', 'rb')));
 ```php
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\HttpFactory;
-use Kami\Rqlite\PsrHttpAdapter;
+use Kami\Rqlite\Adapters\PsrHttpAdapter;
 
 $factory = new HttpFactory();
 
-$adapter = new Psr18(
+$adapter = new PsrHttpAdapter(
     'http://localhost:4001',
     new Client([
         // Configure auth, TLS, timeouts, or a proxy here.
@@ -346,21 +346,21 @@ Implement `Kami\Rqlite\HttpAdapter`:
 
 ```php
 use Kami\Rqlite\Http\Request;
-use Kami\Rqlite\Http\Response;
 use Kami\Rqlite\HttpAdapter;
+use Psr\Http\Message\ResponseInterface;
 
 final class MyAdapter implements HttpAdapter
 {
-    public function send(Request $request): Response
+    public function send(Request $request): ResponseInterface
     {
-        // Return non-2xx responses as Response objects.
+        // Return PSR-7 responses, including non-2xx responses.
         // Throw TransportException when the request cannot be completed.
     }
 }
 ```
 
-The response body must be a `Kami\Rqlite\Http\Body` stream for incremental
-parsing.
+Response bodies must be readable PSR-7 streams for incremental parsing. The
+PSR-18 adapter returns the client's original response without wrapping it.
 
 ## Error handling
 
@@ -368,8 +368,9 @@ All client exceptions extend `Kami\Rqlite\Exception\RqliteException`:
 
 - `TransportException` — the request could not be completed, such as a
   connection failure or timeout.
-- `HttpException` — rqlite returned a non-2xx response. The complete response
-  is available as `$exception->response`.
+- `HttpException` — rqlite returned a non-2xx response. The original PSR-7
+  response is available as `$exception->response`; use `getStatusCode()`,
+  `getHeaderLine()`, and `getBody()` to inspect it.
 - `StatementException` — rqlite reported an error for a specific statement.
   - `$exception->statementIndex` is the zero-based statement index.
   - `$exception->errorMessage` is the raw rqlite message.
@@ -378,6 +379,11 @@ All client exceptions extend `Kami\Rqlite\Exception\RqliteException`:
 - `DecodingException` — the response was not valid JSON or had an unexpected
   shape.
 - `RqliteException` — a request-level error, for example `no leader`.
+
+When migrating from `Http\Response`, replace `statusCode`, `header($name)`,
+and `text()` with `getStatusCode()`, `getHeaderLine($name)`, and
+`getBody()->getContents()`. Unlike `header()`, `getHeaderLine()` returns an
+empty string when the header is absent.
 
 Both the legacy `error` field and the structured `error_v2` field introduced in
 rqlite v10.6.0 are supported. When both are present, `error_v2` is preferred.

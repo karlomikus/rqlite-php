@@ -4,15 +4,14 @@ declare(strict_types=1);
 
 namespace Kami\Rqlite\Adapters;
 
-use Kami\Rqlite\Http\Body;
 use Kami\Rqlite\Http\Request;
-use Kami\Rqlite\Http\Response;
 use Kami\Rqlite\HttpAdapter;
 use Kami\Rqlite\Exception\TransportException;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\UriFactoryInterface;
@@ -36,19 +35,13 @@ class PsrHttpAdapter implements HttpAdapter
     ) {
     }
 
-    public function send(Request $request): Response
+    public function send(Request $request): ResponseInterface
     {
         try {
-            $psrResponse = $this->client->sendRequest($this->buildPsrRequest($request));
+            return $this->client->sendRequest($this->buildPsrRequest($request));
         } catch (ClientExceptionInterface $exception) {
             throw new TransportException($exception->getMessage(), (int) $exception->getCode(), $exception);
         }
-
-        return new Response(
-            statusCode: $psrResponse->getStatusCode(),
-            headers: $psrResponse->getHeaders(),
-            body: new Body($psrResponse->getBody()),
-        );
     }
 
     private function buildPsrRequest(Request $request): RequestInterface

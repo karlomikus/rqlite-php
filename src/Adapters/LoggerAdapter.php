@@ -8,7 +8,7 @@ use Throwable;
 use Psr\Log\LoggerInterface;
 use Kami\Rqlite\HttpAdapter;
 use Kami\Rqlite\Http\Request;
-use Kami\Rqlite\Http\Response;
+use Psr\Http\Message\ResponseInterface;
 
 class LoggerAdapter implements HttpAdapter
 {
@@ -16,7 +16,7 @@ class LoggerAdapter implements HttpAdapter
     {
     }
 
-    public function send(Request $request): Response
+    public function send(Request $request): ResponseInterface
     {
         $startedAt = hrtime(true);
 
@@ -43,7 +43,7 @@ class LoggerAdapter implements HttpAdapter
         $this->logger->debug('rqlite response', [
             'method' => $request->method,
             'uri' => $request->uri,
-            'status_code' => $response->statusCode,
+            'status_code' => $response->getStatusCode(),
             'duration_ms' => (hrtime(true) - $startedAt) / 1_000_000,
         ]);
 
