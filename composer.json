@@ -1,5 +1,6 @@
 {
     "name": "karlomikus/rqlite",
+    "version": "0.3.0",
     "description": "A PHP client for rqlite",
     "type": "library",
     "license": "MIT",
@@ -30,7 +31,8 @@
         "phpstan/phpstan": "^2.2",
         "guzzlehttp/guzzle": "^7.0",
         "pestphp/pest": "^3.5",
-        "mockery/mockery": "^1.6"
+        "mockery/mockery": "^1.6",
+        "rector/rector": "^2.8"
     },
     "config": {
         "allow-plugins": {

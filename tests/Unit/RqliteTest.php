@@ -29,12 +29,10 @@ describe('Query', function () {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
-            ->with(Mockery::on(static function (Request $request): bool {
-                return $request->method === 'POST'
-                    && $request->uri === '/db/query'
-                    && $request->json === ['SELECT * FROM foo']
-                    && $request->query() === ['associative' => true];
-            }))
+            ->with(Mockery::on(static fn(Request $request): bool => $request->method === 'POST'
+                && $request->uri === '/db/query'
+                && $request->json === ['SELECT * FROM foo']
+                && $request->query() === ['associative' => true]))
             ->andReturn(new Response(200, [], '{"results":[{"types":{"id":"integer"},"rows":[{"id":1}],"time":"0.001"}],"time":"0.001"}'));
 
         $rqlite = new Rqlite($adapter);
@@ -59,23 +57,21 @@ describe('Query', function () {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
-            ->with(Mockery::on(static function (Request $request): bool {
-                return $request->method === 'POST'
-                    && $request->uri === '/db/query'
-                    && $request->query() === [
-                        'timings' => true,
-                        'pretty' => true,
-                        'associative' => true,
-                        'blob_array' => true,
-                        'level' => 'linearizable',
-                        'timeout' => '2s',
-                        'linearizable_timeout' => '500ms',
-                        'freshness' => '1.5s',
-                        'freshness_strict' => true,
-                        'raft_index' => true,
-                        'errors' => 'v2',
-                    ];
-            }))
+            ->with(Mockery::on(static fn(Request $request): bool => $request->method === 'POST'
+                && $request->uri === '/db/query'
+                && $request->query() === [
+                    'timings' => true,
+                    'pretty' => true,
+                    'associative' => true,
+                    'blob_array' => true,
+                    'level' => 'linearizable',
+                    'timeout' => '2s',
+                    'linearizable_timeout' => '500ms',
+                    'freshness' => '1.5s',
+                    'freshness_strict' => true,
+                    'raft_index' => true,
+                    'errors' => 'v2',
+                ]))
             ->andReturn(new Response(200, [], '{"results":[{"types":{"id":"integer"},"rows":[{"id":1}]}]}'));
 
         $rqlite = new Rqlite($adapter);
@@ -99,9 +95,7 @@ describe('Query', function () {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
-            ->with(Mockery::on(static function (Request $request): bool {
-                return $request->query() === ['associative' => true];
-            }))
+            ->with(Mockery::on(static fn(Request $request): bool => $request->query() === ['associative' => true]))
             ->andReturn(new Response(200, [], '{"results":[{"types":{"id":"integer"},"rows":[{"id":1}]}]}'));
 
         $rqlite = new Rqlite($adapter);
@@ -248,21 +242,19 @@ describe('Execute', function () {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
-            ->with(Mockery::on(static function (Request $request): bool {
-                return $request->method === 'POST'
-                    && $request->uri === '/db/execute'
-                    && $request->query() === [
-                        'timings' => true,
-                        'pretty' => true,
-                        'db_timeout' => '1s',
-                        'timeout' => '2s',
-                        'transaction' => true,
-                        'queue' => true,
-                        'wait' => true,
-                        'raft_index' => true,
-                        'errors' => 'v1',
-                    ];
-            }))
+            ->with(Mockery::on(static fn(Request $request): bool => $request->method === 'POST'
+                && $request->uri === '/db/execute'
+                && $request->query() === [
+                    'timings' => true,
+                    'pretty' => true,
+                    'db_timeout' => '1s',
+                    'timeout' => '2s',
+                    'transaction' => true,
+                    'queue' => true,
+                    'wait' => true,
+                    'raft_index' => true,
+                    'errors' => 'v1',
+                ]))
             ->andReturn(new Response(200, [], '{"results":[{"last_insert_id":0,"rows_affected":0,"time":"0"}],"time":"0"}'));
 
         $rqlite = new Rqlite($adapter);
@@ -285,11 +277,9 @@ describe('Execute', function () {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
-            ->with(Mockery::on(static function (Request $request): bool {
-                return $request->method === 'POST'
-                    && $request->uri === '/db/execute'
-                    && $request->query() === [];
-            }))
+            ->with(Mockery::on(static fn(Request $request): bool => $request->method === 'POST'
+                && $request->uri === '/db/execute'
+                && $request->query() === []))
             ->andReturn(new Response(200, [], '{"results":[{"last_insert_id":0,"rows_affected":0,"time":"0"}],"time":"0"}'));
 
         $rqlite = new Rqlite($adapter);
@@ -334,24 +324,22 @@ describe('Request', function () {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
-            ->with(Mockery::on(static function (Request $request): bool {
-                return $request->method === 'POST'
-                    && $request->uri === '/db/request'
-                    && $request->query() === [
-                        'transaction' => true,
-                        'timings' => true,
-                        'pretty' => true,
-                        'associative' => true,
-                        'blob_array' => true,
-                        'level' => 'auto',
-                        'timeout' => '2s',
-                        'linearizable_timeout' => '500ms',
-                        'freshness' => '1.5s',
-                        'freshness_strict' => true,
-                        'raft_index' => true,
-                        'errors' => 'v2',
-                    ];
-            }))
+            ->with(Mockery::on(static fn(Request $request): bool => $request->method === 'POST'
+                && $request->uri === '/db/request'
+                && $request->query() === [
+                    'transaction' => true,
+                    'timings' => true,
+                    'pretty' => true,
+                    'associative' => true,
+                    'blob_array' => true,
+                    'level' => 'auto',
+                    'timeout' => '2s',
+                    'linearizable_timeout' => '500ms',
+                    'freshness' => '1.5s',
+                    'freshness_strict' => true,
+                    'raft_index' => true,
+                    'errors' => 'v2',
+                ]))
             ->andReturn(new Response(200, [], '{"results":[{"rows_affected":0}],"time":"0"}'));
 
         $rqlite = new Rqlite($adapter);
@@ -466,11 +454,9 @@ describe('Status', function () {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
-            ->with(Mockery::on(static function (Request $request): bool {
-                return $request->method === 'GET'
-                    && $request->uri === '/status'
-                    && $request->json === null;
-            }))
+            ->with(Mockery::on(static fn(Request $request): bool => $request->method === 'GET'
+                && $request->uri === '/status'
+                && $request->json === null))
             ->andReturn(new Response(200, [], '{"store":{"ready":true}}'));
 
         $rqlite = new Rqlite($adapter);
@@ -495,11 +481,9 @@ describe('Backup', function () {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
-            ->with(Mockery::on(static function (Request $request): bool {
-                return $request->method === 'GET'
-                    && $request->uri === '/db/backup'
-                    && $request->query() === [];
-            }))
+            ->with(Mockery::on(static fn(Request $request): bool => $request->method === 'GET'
+                && $request->uri === '/db/backup'
+                && $request->query() === []))
             ->andReturn(new Response(200, [], 'SQLite format fake backup data'));
 
         $rqlite = new Rqlite($adapter);
@@ -511,17 +495,15 @@ describe('Backup', function () {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
-            ->with(Mockery::on(static function (Request $request): bool {
-                return $request->method === 'GET'
-                    && $request->uri === '/db/backup'
-                    && $request->query() === [
-                        'fmt' => 'sql',
-                        'vacuum' => true,
-                        'compress' => true,
-                        'noleader' => true,
-                        'redirect' => true,
-                    ];
-            }))
+            ->with(Mockery::on(static fn(Request $request): bool => $request->method === 'GET'
+                && $request->uri === '/db/backup'
+                && $request->query() === [
+                    'fmt' => 'sql',
+                    'vacuum' => true,
+                    'compress' => true,
+                    'noleader' => true,
+                    'redirect' => true,
+                ]))
             ->andReturn(new Response(200, [], 'CREATE TABLE foo (id INTEGER);'));
 
         $rqlite = new Rqlite($adapter);
@@ -667,10 +649,8 @@ describe('Load', function () {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
-            ->with(Mockery::on(static function (Request $request): bool {
-                return $request->uri === '/db/load'
-                    && $request->query() === ['redirect' => true];
-            }))
+            ->with(Mockery::on(static fn(Request $request): bool => $request->uri === '/db/load'
+                && $request->query() === ['redirect' => true]))
             ->andReturn(new Response(200));
 
         $rqlite = new Rqlite($adapter);

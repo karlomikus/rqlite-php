@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace Kami\Rqlite\Http;
 
-final class Response
+final readonly class Response
 {
-    public readonly Body $body;
+    public Body $body;
 
     /**
      * @param array<string, string|array<string>> $headers
      */
     public function __construct(
-        public readonly int $statusCode,
-        public readonly array $headers = [],
+        public int $statusCode,
+        public array $headers = [],
         string|Body $body = '',
     ) {
         $this->body = is_string($body) ? Body::fromString($body) : $body;
