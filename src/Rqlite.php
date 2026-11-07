@@ -30,13 +30,20 @@ use Psr\Http\Client\ClientExceptionInterface;
 /**
  * @phpstan-type Statement (non-empty-string|array{0: non-empty-string, 1: array<string, scalar|null>}|array{0: non-empty-string, ...<int, scalar|null>})
  */
-class Rqlite
+final readonly class Rqlite
 {
+    /**
+     * @param non-empty-string $baseUrl The base URL of the rqlite node, e.g. "http://localhost:4001"
+     * @param ClientInterface $httpClient A PSR-18 HTTP client
+     * @param RequestFactoryInterface $requestFactory A PSR-17 request factory
+     * @param StreamFactoryInterface $streamFactory A PSR-17 stream factory
+     * @throws InvalidArgumentException If the base URL is invalid
+     */
     public function __construct(
-        private readonly string $baseUrl,
-        private readonly ClientInterface $httpClient,
-        private readonly RequestFactoryInterface $requestFactory,
-        private readonly StreamFactoryInterface $streamFactory,
+        private string $baseUrl,
+        private ClientInterface $httpClient,
+        private RequestFactoryInterface $requestFactory,
+        private StreamFactoryInterface $streamFactory,
     ) {
         $parts = parse_url($baseUrl);
 
@@ -54,6 +61,8 @@ class Rqlite
      * Pass a configured PSR-18 client to customize transport or add middleware.
      * Install guzzlehttp/guzzle to use the default client and factories.
      *
+     * @param non-empty-string $baseUrl The base URL of the rqlite node, e.g. "http://localhost:4001"
+     * @param ClientInterface|null $client A PSR-18 HTTP client; if null, a Guzzle client is created
      * @throws InvalidArgumentException
      * @throws RuntimeException If the required Guzzle packages are not installed.
      */
