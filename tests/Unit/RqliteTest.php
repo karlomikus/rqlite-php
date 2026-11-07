@@ -7,6 +7,8 @@ use Kami\Rqlite\ErrorFormat;
 use Kami\Rqlite\QueryOptions;
 use Kami\Rqlite\ExecuteOptions;
 use Kami\Rqlite\RequestOptions;
+use Kami\Rqlite\BackupOptions;
+use Kami\Rqlite\LoadOptions;
 use Kami\Rqlite\ReadConsistencyLevel;
 use Kami\Rqlite\Http\Request;
 use Kami\Rqlite\Http\Response;
@@ -484,5 +486,232 @@ describe('Status', function () {
         $rqlite = new Rqlite($adapter);
 
         expect(fn () => $rqlite->status())->toThrow(HttpException::class);
+    });
+});
+
+describe('Backup', function () {
+    it('sends a backup request and returns the body', function () {
+        $adapter = Mockery::mock(HttpAdapter::class);
+        $adapter->shouldReceive('send')
+            ->once()
+            ->with(Mockery::on(static function (Request $request): bool {
+                return $request->method === 'GET'
+                    && $request->uri === '/db/backup'
+                    && $request->query() === [];
+            }))
+            ->andReturn(new Response(200, [], 'SQLite format fake backup data'));
+
+        $rqlite = new Rqlite($adapter);
+
+        expect($rqlite->backup()->contents())->toBe('SQLite format fake backup data');
+    });
+
+    it('passes backup options through to the request', function () {
+        $adapter = Mockery::mock(HttpAdapter::class);
+        $adapter->shouldReceive('send')
+            ->once()
+            ->with(Mockery::on(static function (Request $request): bool {
+                return $request->method === 'GET'
+                    && $request->uri === '/db/backup'
+                    && $request->query() === [
+                        'fmt' => 'sql',
+                        'vacuum' => true,
+                        'compress' => true,
+                        'noleader' => true,
+                        'redirect' => true,
+                    ];
+            }))
+            ->andReturn(new Response(200, [], 'CREATE TABLE foo (id INTEGER);'));
+
+        $rqlite = new Rqlite($adapter);
+
+        expect($rqlite->backup(new BackupOptions(
+            format: 'sql',
+            vacuum: true,
+            compress: true,
+            noLeader: true,
+            redirect: true,
+        ))->contents())->toBe('CREATE TABLE foo (id INTEGER);');
+    });
+
+    it('rejects an unknown backup format', function () {
+        new BackupOptions(format: 'json');
+    })->throws(InvalidArgumentException::class, 'The backup format must be "sql" or null.');
+
+    it('throws an http exception when the backup endpoint fails', function () {
+        $adapter = Mockery::mock(HttpAdapter::class);
+        $adapter->shouldReceive('send')
+            ->once()
+            ->andReturn(new Response(500, [], 'backup failed'));
+
+        $rqlite = new Rqlite($adapter);
+
+        expect(fn () => $rqlite->backup())->toThrow(HttpException::class);
+    });
+});
+
+describe('Load', function () {
+    it('detects sql text and sends a plain load request', function () {
+        $adapter = Mockery::mock(HttpAdapter::class);
+        $adapter->shouldReceive('send')
+            ->once()
+            ->with(Mockery::on(static function (Request $request): bool {
+                $stream = $request->stream;
+
+                return $request->method === 'POST'
+                    && $request->uri === '/db/load'
+                    && $request->query() === []
+                    && ($request->headers()['Content-Type'] ?? null) === 'text/plain'
+                    && is_resource($stream)
+                    && stream_get_contents($stream) === 'CREATE TABLE foo (id INTEGER);';
+            }))
+            ->andReturn(new Response(200));
+
+        $rqlite = new Rqlite($adapter);
+        $rqlite->load('CREATE TABLE foo (id INTEGER);');
+    });
+
+    it('detects a sqlite file and sends an octet stream load request', function () {
+        $data = 'SQLite format fake database bytes';
+
+        $adapter = Mockery::mock(HttpAdapter::class);
+        $adapter->shouldReceive('send')
+            ->once()
+            ->with(Mockery::on(static function (Request $request) use ($data): bool {
+                $stream = $request->stream;
+
+                return $request->method === 'POST'
+                    && $request->uri === '/db/load'
+                    && ($request->headers()['Content-Type'] ?? null) === 'application/octet-stream'
+                    && is_resource($stream)
+                    && stream_get_contents($stream) === $data;
+            }))
+            ->andReturn(new Response(200));
+
+        $rqlite = new Rqlite($adapter);
+        $rqlite->load($data);
+    });
+
+    it('rewinds a seekable stream before sending it', function () {
+        $data = 'CREATE TABLE foo (id INTEGER);';
+        $stream = fopen('php://temp', 'w+b');
+        fwrite($stream, $data);
+
+        $adapter = Mockery::mock(HttpAdapter::class);
+        $adapter->shouldReceive('send')
+            ->once()
+            ->with(Mockery::on(static function (Request $request) use ($data): bool {
+                $stream = $request->stream;
+
+                return ($request->headers()['Content-Type'] ?? null) === 'text/plain'
+                    && is_resource($stream)
+                    && stream_get_contents($stream) === $data;
+            }))
+            ->andReturn(new Response(200));
+
+        $rqlite = new Rqlite($adapter);
+        $rqlite->load($stream);
+
+        fclose($stream);
+    });
+
+    it('supports a non seekable stream', function () {
+        $data = 'SQLite format fake database bytes';
+        $stream = fopen('php://temp', 'w+b');
+        fwrite($stream, $data);
+        $nonSeekable = fopen('php://temp', 'w+b');
+        stream_filter_append($nonSeekable, 'string.rot13', STREAM_FILTER_READ, ['read_write' => false]);
+        // Rewind is not possible on a read-only pipe; simulate with a chunked source.
+        $source = fopen('data://text/plain,' . rawurlencode($data), 'rb');
+
+        $adapter = Mockery::mock(HttpAdapter::class);
+        $adapter->shouldReceive('send')
+            ->once()
+            ->with(Mockery::on(static function (Request $request) use ($data): bool {
+                $stream = $request->stream;
+
+                return ($request->headers()['Content-Type'] ?? null) === 'application/octet-stream'
+                    && is_resource($stream)
+                    && stream_get_contents($stream) === $data;
+            }))
+            ->andReturn(new Response(200));
+
+        $rqlite = new Rqlite($adapter);
+        $rqlite->load($source);
+
+        fclose($stream);
+        fclose($nonSeekable);
+    });
+
+    it('passes load options through to the request', function () {
+        $adapter = Mockery::mock(HttpAdapter::class);
+        $adapter->shouldReceive('send')
+            ->once()
+            ->with(Mockery::on(static function (Request $request): bool {
+                return $request->uri === '/db/load'
+                    && $request->query() === ['redirect' => true];
+            }))
+            ->andReturn(new Response(200));
+
+        $rqlite = new Rqlite($adapter);
+        $rqlite->load('CREATE TABLE foo (id INTEGER);', new LoadOptions(redirect: true));
+    });
+
+    it('rejects invalid upload data', function () {
+        $rqlite = new Rqlite(Mockery::mock(HttpAdapter::class));
+
+        expect(fn () => $rqlite->load(123))->toThrow(InvalidArgumentException::class);
+    });
+
+    it('throws an http exception when the load endpoint fails', function () {
+        $adapter = Mockery::mock(HttpAdapter::class);
+        $adapter->shouldReceive('send')
+            ->once()
+            ->andReturn(new Response(500, [], 'load failed'));
+
+        $rqlite = new Rqlite($adapter);
+
+        expect(fn () => $rqlite->load('CREATE TABLE foo (id INTEGER);'))->toThrow(HttpException::class);
+    });
+});
+
+describe('Boot', function () {
+    it('sends a boot request with the stream data', function () {
+        $data = 'SQLite format fake database bytes';
+
+        $adapter = Mockery::mock(HttpAdapter::class);
+        $adapter->shouldReceive('send')
+            ->once()
+            ->with(Mockery::on(static function (Request $request) use ($data): bool {
+                $stream = $request->stream;
+
+                return $request->method === 'POST'
+                    && $request->uri === '/boot'
+                    && $request->query() === []
+                    && ($request->headers()['Content-Type'] ?? null) === 'application/octet-stream'
+                    && is_resource($stream)
+                    && stream_get_contents($stream) === $data;
+            }))
+            ->andReturn(new Response(200));
+
+        $rqlite = new Rqlite($adapter);
+        $rqlite->boot($data);
+    });
+
+    it('rejects invalid boot data', function () {
+        $rqlite = new Rqlite(Mockery::mock(HttpAdapter::class));
+
+        expect(fn () => $rqlite->boot(['not', 'a', 'stream']))->toThrow(InvalidArgumentException::class);
+    });
+
+    it('throws an http exception when the boot endpoint fails', function () {
+        $adapter = Mockery::mock(HttpAdapter::class);
+        $adapter->shouldReceive('send')
+            ->once()
+            ->andReturn(new Response(400, [], 'must be a single-node system'));
+
+        $rqlite = new Rqlite($adapter);
+
+        expect(fn () => $rqlite->boot('SQLite format fake database bytes'))->toThrow(HttpException::class);
     });
 });

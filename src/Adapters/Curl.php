@@ -66,7 +66,14 @@ class Curl implements HttpAdapter
         ];
 
         $body = $request->body();
-        if ($body !== null) {
+        $stream = $request->stream;
+
+        if ($stream !== null) {
+            $options[CURLOPT_UPLOAD] = true;
+            $options[CURLOPT_INFILE] = $stream;
+            $stats = fstat($stream);
+            $options[CURLOPT_INFILESIZE] = $stats === false ? -1 : $stats['size'];
+        } elseif ($body !== null) {
             $options[CURLOPT_POSTFIELDS] = $body;
         }
 

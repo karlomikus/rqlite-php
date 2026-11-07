@@ -33,6 +33,8 @@ class Guzzle implements HttpAdapter
 
         if ($request->json !== null) {
             $options['json'] = $request->json;
+        } elseif ($request->stream !== null) {
+            $options['body'] = $request->stream;
         } elseif ($request->rawBody !== null) {
             $options['body'] = $request->rawBody;
         }

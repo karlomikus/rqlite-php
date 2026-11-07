@@ -15,6 +15,7 @@ final class Request
     public readonly string $uri;
 
     /**
+     * @param resource|null $stream
      * @param array<string, scalar|null> $query
      * @param array<string, string> $headers
      * @param array<mixed>|null $json
@@ -26,6 +27,7 @@ final class Request
         private readonly array $headers = [],
         public readonly ?array $json = null,
         public readonly ?string $rawBody = null,
+        public $stream = null,
     ) {
         if ($method === '') {
             throw new InvalidArgumentException('The request method cannot be empty.');
@@ -35,8 +37,14 @@ final class Request
             throw new InvalidArgumentException('The request URI cannot be empty.');
         }
 
-        if ($json !== null && $rawBody !== null) {
-            throw new InvalidArgumentException('A request cannot contain both a JSON payload and a raw body.');
+        if ($stream !== null && !is_resource($stream)) {
+            throw new InvalidArgumentException('The request body stream must be a stream resource.');
+        }
+
+        $payloadCount = ($json !== null ? 1 : 0) + ($rawBody !== null ? 1 : 0) + ($stream !== null ? 1 : 0);
+
+        if ($payloadCount > 1) {
+            throw new InvalidArgumentException('A request cannot contain more than one of a JSON payload, a raw body, or a stream.');
         }
 
         $this->method = $method;

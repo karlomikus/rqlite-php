@@ -6,6 +6,7 @@ namespace Kami\Rqlite;
 
 use Generator;
 use InvalidArgumentException;
+use RuntimeException;
 use Kami\Rqlite\Http\Body;
 use Kami\Rqlite\Http\JsonStream;
 use Kami\Rqlite\Http\Request;
@@ -142,6 +143,173 @@ class Rqlite
     public function status(): array
     {
         return $this->decodeDocument($this->sendRequest('GET', '/status')->body);
+    }
+
+    /**
+     * Request a copy of the SQLite database from the node.
+     *
+     * The returned body is a stream; the caller is responsible for consuming
+     * and closing it.
+     *
+     * @throws HttpException
+     * @throws TransportException
+     */
+    public function backup(?BackupOptions $options = null): Body
+    {
+        $options ??= new BackupOptions();
+
+        return $this->sendRequest('GET', '/db/backup', [
+            'fmt' => $options->format,
+            'vacuum' => $options->vacuum,
+            'compress' => $options->compress,
+            'noleader' => $options->noLeader,
+            'redirect' => $options->redirect,
+        ])->body;
+    }
+
+    /**
+     * Stream data into the node to load or restore data.
+     *
+     * The format of the data is detected automatically: data starting with
+     * the SQLite file magic is sent as binary, anything else as plain SQL text.
+     *
+     * @param resource|string $data
+     * @throws InvalidArgumentException
+     * @throws HttpException
+     * @throws TransportException
+     */
+    public function load($data, ?LoadOptions $options = null): void
+    {
+        $options ??= new LoadOptions();
+
+        [$stream, $contentType] = $this->prepareUpload($data);
+
+        $this->sendRawRequest('POST', '/db/load', [
+            'redirect' => $options->redirect,
+        ], $stream, $contentType);
+    }
+
+    /**
+     * Stream a raw SQLite file into a single-node system, effectively
+     * initializing the underlying SQLite database from scratch.
+     *
+     * It is an error to call this on anything but a single-node system.
+     *
+     * @param resource|string $data
+     * @throws InvalidArgumentException
+     * @throws HttpException
+     * @throws TransportException
+     */
+    public function boot($data): void
+    {
+        $stream = $this->toStream($data);
+
+        $this->sendRawRequest('POST', '/boot', [], $stream, 'application/octet-stream');
+    }
+
+    /**
+     * Send a request with a raw or stream body.
+     *
+     * @param non-empty-string $method
+     * @param non-empty-string $uri
+     * @param array<string, scalar|null> $query
+     * @param resource $stream
+     * @throws HttpException
+     * @throws TransportException
+     */
+    private function sendRawRequest(string $method, string $uri, array $query, $stream, string $contentType): Response
+    {
+        $response = $this->httpAdapter->send(new Request(
+            $method,
+            $uri,
+            $query,
+            ['Content-Type' => $contentType],
+            stream: $stream,
+        ));
+
+        if (!$response->isSuccessful()) {
+            throw new HttpException($response);
+        }
+
+        return $response;
+    }
+
+    /**
+     * Prepare the upload payload.
+     *
+     * The first 13 bytes of the data are inspected to detect whether it is a
+     * binary SQLite database file or plain SQL text. A non-seekable stream is
+     * copied into a temporary buffer so its first bytes can be inspected.
+     *
+     * @param resource|string $data
+     * @return array{resource, string} The stream and the content type
+     * @throws InvalidArgumentException
+     */
+    private function prepareUpload($data): array
+    {
+        $stream = $this->toStream($data);
+
+        $prefix = fread($stream, 13);
+
+        if ($prefix === 'SQLite format') {
+            $contentType = 'application/octet-stream';
+        } else {
+            $contentType = 'text/plain';
+        }
+
+        if (stream_get_meta_data($stream)['seekable']) {
+            rewind($stream);
+
+            return [$stream, $contentType];
+        }
+
+        // The stream cannot be rewound, so copy it, together with the bytes
+        // already read, into a temporary buffer.
+        $buffer = fopen('php://temp', 'w+b');
+
+        if ($buffer === false) {
+            throw new RuntimeException('Unable to create a temporary upload stream.');
+        }
+
+        if ($prefix !== false && $prefix !== '') {
+            fwrite($buffer, $prefix);
+        }
+
+        stream_copy_to_stream($stream, $buffer);
+        rewind($buffer);
+
+        return [$buffer, $contentType];
+    }
+
+    /**
+     * Convert upload data into a readable stream.
+     *
+     * @param resource|string $data
+     * @return resource
+     * @throws InvalidArgumentException
+     */
+    private function toStream($data)
+    {
+        if (is_resource($data)) {
+            return $data;
+        }
+
+        if (is_string($data)) {
+            $stream = fopen('php://temp', 'w+b');
+
+            if ($stream === false) {
+                throw new RuntimeException('Unable to create an upload stream.');
+            }
+
+            if ($data !== '') {
+                fwrite($stream, $data);
+                rewind($stream);
+            }
+
+            return $stream;
+        }
+
+        throw new InvalidArgumentException('The upload data must be a stream resource or a string.');
     }
 
     /**

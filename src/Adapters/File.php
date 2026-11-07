@@ -36,6 +36,10 @@ class File implements HttpAdapter
         ];
 
         $body = $request->body();
+        if ($body === null && $request->stream !== null) {
+            $body = stream_get_contents($request->stream);
+        }
+
         if ($body !== null) {
             $httpContext['content'] = $body;
         }
