@@ -6,7 +6,8 @@
     "require": {
         "php": "^8.4",
         "guzzlehttp/guzzle": "^8.3",
-        "karlomikus/rqlite": "@dev"
+        "karlomikus/rqlite": "@dev",
+        "monolog/monolog": "^3.12"
     },
     "repositories": [
         {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\HttpFactory;
+use Kami\Rqlite\Adapters\LoggerAdapter;
 use Kami\Rqlite\Adapters\PsrHttpAdapter;
 use Kami\Rqlite\Exception\StatementException;
 use Kami\Rqlite\ExecuteOptions;
@@ -27,15 +28,20 @@ require __DIR__ . '/vendor/autoload.php';
 
 $baseUrl = getenv('RQLITE_URL') ?: 'http://localhost:4001';
 
-$factory = new HttpFactory();
+$logger = new Monolog\Logger('rqlite');
+$logger->pushHandler(new Monolog\Handler\StreamHandler(STDOUT, Monolog\Level::Debug));
 
-$rqlite = new Rqlite(new PsrHttpAdapter(
+$factory = new HttpFactory();
+$adapter = new PsrHttpAdapter(
     $baseUrl,
     new Client(),
     $factory,
     $factory,
     $factory,
-));
+);
+$adapter = new LoggerAdapter($adapter, $logger);
+
+$rqlite = new Rqlite($adapter);
 
 echo "Connected to rqlite at {$baseUrl}\n";
 
