@@ -12,7 +12,7 @@ use Kami\Rqlite\Adapters\PsrHttpAdapter;
 use Kami\Rqlite\ReadConsistencyLevel;
 use Kami\Rqlite\Result\RequestResult;
 
-it('loads the base schema and reads replicated rows from every node', function () {
+it('loads the base schema and reads replicated rows from every node', function (): void {
     $factory = new HttpFactory();
     $clients = array_map(
         static fn (string $url): Rqlite => new Rqlite(new PsrHttpAdapter(

@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Kami\Rqlite\Http\Body;
 use Kami\Rqlite\Http\JsonStream;
 
-it('streams object values and preserves large integers', function () {
+it('streams object values and preserves large integers', function (): void {
     $json = new JsonStream(Body::fromString(
         '{"results":[{"types":{"id":"integer"},"rows":[{"id":9223372036854775808,"note":"a \\"quoted\\" value"}]}],"time":"0.001"}',
     ));
@@ -45,7 +45,7 @@ it('streams object values and preserves large integers', function () {
     ]);
 });
 
-it('skips unknown values without decoding them', function () {
+it('skips unknown values without decoding them', function (): void {
     $json = new JsonStream(Body::fromString(
         '{"skip":{"nested":["value",{"deep":true}]},"keep":42}',
     ));

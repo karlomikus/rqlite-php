@@ -9,7 +9,7 @@ use Kami\Rqlite\Adapters\LoggerAdapter;
 use Kami\Rqlite\Exception\TransportException;
 use Psr\Log\LoggerInterface;
 
-it('logs requests and responses', function () {
+it('logs requests and responses', function (): void {
     $baseAdapter = Mockery::mock(HttpAdapter::class);
     $baseAdapter->shouldReceive('send')->once()->andReturn(new Response(200));
 
@@ -21,7 +21,7 @@ it('logs requests and responses', function () {
     expect($adapter->send(new Request('GET', '/status'))->statusCode)->toBe(200);
 });
 
-it('logs and rethrows transport errors', function () {
+it('logs and rethrows transport errors', function (): void {
     $baseAdapter = Mockery::mock(HttpAdapter::class);
     $baseAdapter->shouldReceive('send')->once()->andThrow(new TransportException('connection refused'));
 
@@ -31,6 +31,6 @@ it('logs and rethrows transport errors', function () {
 
     $adapter = new LoggerAdapter($baseAdapter, $logger);
 
-    expect(fn () => $adapter->send(new Request('GET', '/status')))
+    expect(fn (): \Kami\Rqlite\Http\Response => $adapter->send(new Request('GET', '/status')))
         ->toThrow(TransportException::class);
 });

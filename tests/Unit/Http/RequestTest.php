@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use Kami\Rqlite\Http\Request;
 
-it('adds json headers and encodes the body', function () {
+it('adds json headers and encodes the body', function (): void {
     $request = new Request('POST', '/db/query', ['timings' => true, 'level' => null], json: ['SELECT 1']);
 
     expect($request->query())->toBe(['timings' => true]);
@@ -15,7 +15,7 @@ it('adds json headers and encodes the body', function () {
     expect($request->body())->toBe('["SELECT 1"]');
 });
 
-it('omits false boolean query parameters', function () {
+it('omits false boolean query parameters', function (): void {
     $request = new Request('POST', '/db/execute', [
         'timings' => false,
         'transaction' => true,
@@ -25,14 +25,14 @@ it('omits false boolean query parameters', function () {
     expect($request->query())->toBe(['transaction' => true]);
 });
 
-it('does not add a json content type for raw bodies', function () {
+it('does not add a json content type for raw bodies', function (): void {
     $request = new Request('POST', '/db/load', rawBody: 'CREATE TABLE foo (id INTEGER)');
 
     expect($request->headers())->toBe(['Accept' => 'application/json']);
     expect($request->body())->toBe('CREATE TABLE foo (id INTEGER)');
 });
 
-it('keeps custom headers and matches them case-insensitively', function () {
+it('keeps custom headers and matches them case-insensitively', function (): void {
     $request = new Request('POST', '/db/query', headers: ['content-type' => 'text/plain'], json: ['SELECT 1']);
 
     expect($request->headers())->toBe([
@@ -41,11 +41,11 @@ it('keeps custom headers and matches them case-insensitively', function () {
     ]);
 });
 
-it('rejects requests with both json and a raw body', function () {
+it('rejects requests with both json and a raw body', function (): void {
     new Request('POST', '/db/query', json: [], rawBody: 'SELECT 1');
 })->throws(InvalidArgumentException::class);
 
-it('accepts a stream body and exposes it', function () {
+it('accepts a stream body and exposes it', function (): void {
     $stream = fopen('php://temp', 'w+b');
     fwrite($stream, 'binary-data');
     rewind($stream);
@@ -65,7 +65,7 @@ it('accepts a stream body and exposes it', function () {
     fclose($stream);
 });
 
-it('does not add a content type header for stream requests', function () {
+it('does not add a content type header for stream requests', function (): void {
     $stream = fopen('php://temp', 'wb');
     $request = new Request('POST', '/boot', stream: $stream);
 
@@ -74,7 +74,7 @@ it('does not add a content type header for stream requests', function () {
     fclose($stream);
 });
 
-it('rejects requests with both a json payload and a stream', function () {
+it('rejects requests with both a json payload and a stream', function (): void {
     $stream = fopen('php://temp', 'wb');
 
     new Request('POST', '/db/load', json: [], stream: $stream);
@@ -82,7 +82,7 @@ it('rejects requests with both a json payload and a stream', function () {
     fclose($stream);
 })->throws(InvalidArgumentException::class);
 
-it('rejects requests with both a raw body and a stream', function () {
+it('rejects requests with both a raw body and a stream', function (): void {
     $stream = fopen('php://temp', 'wb');
 
     new Request('POST', '/db/load', rawBody: 'SELECT 1', stream: $stream);
@@ -90,14 +90,14 @@ it('rejects requests with both a raw body and a stream', function () {
     fclose($stream);
 })->throws(InvalidArgumentException::class);
 
-it('rejects a non stream body stream', function () {
+it('rejects a non stream body stream', function (): void {
     new Request('POST', '/boot', stream: 'not-a-resource');
 })->throws(InvalidArgumentException::class);
 
-it('rejects an empty method', function () {
+it('rejects an empty method', function (): void {
     new Request('', '/db/query');
 })->throws(InvalidArgumentException::class);
 
-it('rejects an empty uri', function () {
+it('rejects an empty uri', function (): void {
     new Request('GET', '');
 })->throws(InvalidArgumentException::class);

@@ -32,7 +32,7 @@ final class Results implements IteratorAggregate
      */
     public function __construct(?Generator $results = null)
     {
-        $this->results = $results ?? self::empty();
+        $this->results = $results ?? $this->empty();
     }
 
     /**
@@ -46,7 +46,7 @@ final class Results implements IteratorAggregate
     /**
      * @return Generator<int, TResult>
      */
-    private static function empty(): Generator
+    private function empty(): Generator
     {
         yield from [];
     }

@@ -385,7 +385,7 @@ final class JsonStream
 
     private function skipWhitespace(): void
     {
-        while (($char = $this->peek()) !== null && ($char === ' ' || $char === "\n" || $char === "\r" || $char === "\t")) {
+        while (($char = $this->peek()) !== null && (in_array($char, [' ', "\n", "\r", "\t"], true))) {
             $this->position++;
         }
     }

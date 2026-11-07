@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use Kami\Rqlite\Http\Response;
 
-it('reports whether the status code is successful', function () {
+it('reports whether the status code is successful', function (): void {
     expect((new Response(200))->isSuccessful())->toBeTrue();
     expect((new Response(299))->isSuccessful())->toBeTrue();
     expect((new Response(199))->isSuccessful())->toBeFalse();
@@ -12,7 +12,7 @@ it('reports whether the status code is successful', function () {
     expect((new Response(500))->isSuccessful())->toBeFalse();
 });
 
-it('reads headers case-insensitively', function () {
+it('reads headers case-insensitively', function (): void {
     $response = new Response(200, [
         'Content-Type' => ['application/json'],
         'X-Test' => 'yes',

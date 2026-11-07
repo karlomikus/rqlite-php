@@ -24,8 +24,8 @@ use Kami\Rqlite\Exception\TransportException;
 use Kami\Rqlite\Result\AssociativeQueryResult;
 use GuzzleHttp\Psr7\Utils;
 
-describe('Query', function () {
-    it('can create simple query', function () {
+describe('Query', function (): void {
+    it('can create simple query', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -53,7 +53,7 @@ describe('Query', function () {
         expect($rows)->toBeArray()->toHaveCount(1);
     });
 
-    it('passes query options through to the request', function () {
+    it('passes query options through to the request', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -91,7 +91,7 @@ describe('Query', function () {
         iterator_to_array($results);
     });
 
-    it('omits zero query option durations', function () {
+    it('omits zero query option durations', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -108,16 +108,16 @@ describe('Query', function () {
         iterator_to_array($results);
     });
 
-    it('rejects empty query option durations', function () {
+    it('rejects empty query option durations', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
 
         $rqlite = new Rqlite($adapter);
 
-        expect(fn () => $rqlite->query(['SELECT * FROM foo'], new QueryOptions(timeout: ' ')))
+        expect(fn (): \Kami\Rqlite\Result\Results => $rqlite->query(['SELECT * FROM foo'], new QueryOptions(timeout: ' ')))
             ->toThrow(InvalidArgumentException::class, 'A duration option cannot be empty.');
     });
 
-    it('will throw exception on error', function () {
+    it('will throw exception on error', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -129,7 +129,7 @@ describe('Query', function () {
         iterator_to_array($results);
     })->throws(StatementException::class);
 
-    it('uses structured error details when error_v2 is present', function () {
+    it('uses structured error details when error_v2 is present', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -154,7 +154,7 @@ describe('Query', function () {
         $this->fail('Expected a StatementException to be thrown.');
     });
 
-    it('throws when rqlite returns a request-level error', function () {
+    it('throws when rqlite returns a request-level error', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -163,11 +163,11 @@ describe('Query', function () {
         $rqlite = new Rqlite($adapter);
         $results = $rqlite->query(['SELECT * FROM foo']);
 
-        expect(fn () => iterator_to_array($results))
+        expect(fn (): array => iterator_to_array($results))
             ->toThrow(RqliteException::class, 'no leader');
     });
 
-    it('throws a decoding exception when results are missing', function () {
+    it('throws a decoding exception when results are missing', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -176,11 +176,11 @@ describe('Query', function () {
         $rqlite = new Rqlite($adapter);
         $results = $rqlite->query(['SELECT * FROM foo']);
 
-        expect(fn () => iterator_to_array($results))
+        expect(fn (): array => iterator_to_array($results))
             ->toThrow(DecodingException::class);
     });
 
-    it('preserves zero query timings and large integers', function () {
+    it('preserves zero query timings and large integers', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -203,8 +203,8 @@ describe('Query', function () {
     });
 });
 
-describe('Execute', function () {
-    it('can execute query', function () {
+describe('Execute', function (): void {
+    it('can execute query', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -222,7 +222,7 @@ describe('Execute', function () {
         expect($items[0]->time)->toBeFloat()->toBe(0.00886);
     });
 
-    it('preserves zero rows affected and zero timing', function () {
+    it('preserves zero rows affected and zero timing', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -238,7 +238,7 @@ describe('Execute', function () {
         expect($items[0]->time)->toBe(0.0);
     });
 
-    it('passes execute options through to the request', function () {
+    it('passes execute options through to the request', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -273,7 +273,7 @@ describe('Execute', function () {
         iterator_to_array($results->results);
     });
 
-    it('does not send false or associative execute flags', function () {
+    it('does not send false or associative execute flags', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -287,8 +287,8 @@ describe('Execute', function () {
     });
 });
 
-describe('Request', function () {
-    it('returns mixed read and write results', function () {
+describe('Request', function (): void {
+    it('returns mixed read and write results', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -320,7 +320,7 @@ describe('Request', function () {
         expect($rows[1])->toBe([['id' => 1]]);
     });
 
-    it('passes request options through to the request', function () {
+    it('passes request options through to the request', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -360,7 +360,7 @@ describe('Request', function () {
         iterator_to_array($results);
     });
 
-    it('decodes associative write results with null rows', function () {
+    it('decodes associative write results with null rows', function (): void {
         // rqlite renders `rows` as `null` for write statements when the request
         // is made in associative form (`associative=true`).
         $adapter = Mockery::mock(HttpAdapter::class);
@@ -390,7 +390,7 @@ describe('Request', function () {
         expect($rows[1])->toBe([['id' => 6, 'title' => 'x']]);
     });
 
-    it('throws when a request statement fails', function () {
+    it('throws when a request statement fails', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -399,13 +399,13 @@ describe('Request', function () {
         $rqlite = new Rqlite($adapter);
         $results = $rqlite->request(['SELECT * FROM foo']);
 
-        expect(fn () => iterator_to_array($results))
+        expect(fn (): array => iterator_to_array($results))
             ->toThrow(StatementException::class, 'no such table: foo');
     });
 });
 
-describe('HTTP transport errors', function () {
-    it('throws an http exception for non-2xx responses', function () {
+describe('HTTP transport errors', function (): void {
+    it('throws an http exception for non-2xx responses', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -425,7 +425,7 @@ describe('HTTP transport errors', function () {
         $this->fail('Expected an HttpException to be thrown.');
     });
 
-    it('throws a decoding exception for invalid json', function () {
+    it('throws a decoding exception for invalid json', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -434,10 +434,10 @@ describe('HTTP transport errors', function () {
         $rqlite = new Rqlite($adapter);
         $results = $rqlite->query(['SELECT * FROM foo']);
 
-        expect(fn () => iterator_to_array($results))->toThrow(DecodingException::class);
+        expect(fn (): array => iterator_to_array($results))->toThrow(DecodingException::class);
     });
 
-    it('propagates transport exceptions', function () {
+    it('propagates transport exceptions', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -445,12 +445,12 @@ describe('HTTP transport errors', function () {
 
         $rqlite = new Rqlite($adapter);
 
-        expect(fn () => $rqlite->query(['SELECT * FROM foo']))->toThrow(TransportException::class);
+        expect(fn (): \Kami\Rqlite\Result\Results => $rqlite->query(['SELECT * FROM foo']))->toThrow(TransportException::class);
     });
 });
 
-describe('Status', function () {
-    it('fetches the server status', function () {
+describe('Status', function (): void {
+    it('fetches the server status', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -464,7 +464,7 @@ describe('Status', function () {
         expect($rqlite->status())->toBe(['store' => ['ready' => true]]);
     });
 
-    it('throws an http exception when the status endpoint fails', function () {
+    it('throws an http exception when the status endpoint fails', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -472,12 +472,12 @@ describe('Status', function () {
 
         $rqlite = new Rqlite($adapter);
 
-        expect(fn () => $rqlite->status())->toThrow(HttpException::class);
+        expect(fn (): array => $rqlite->status())->toThrow(HttpException::class);
     });
 });
 
-describe('Backup', function () {
-    it('sends a backup request and returns the body', function () {
+describe('Backup', function (): void {
+    it('sends a backup request and returns the body', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -491,7 +491,7 @@ describe('Backup', function () {
         expect($rqlite->backup()->contents())->toBe('SQLite format fake backup data');
     });
 
-    it('passes backup options through to the request', function () {
+    it('passes backup options through to the request', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -517,11 +517,11 @@ describe('Backup', function () {
         ))->contents())->toBe('CREATE TABLE foo (id INTEGER);');
     });
 
-    it('rejects an unknown backup format', function () {
+    it('rejects an unknown backup format', function (): void {
         new BackupOptions(format: 'json');
     })->throws(InvalidArgumentException::class, 'The backup format must be "sql" or null.');
 
-    it('throws an http exception when the backup endpoint fails', function () {
+    it('throws an http exception when the backup endpoint fails', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -529,12 +529,12 @@ describe('Backup', function () {
 
         $rqlite = new Rqlite($adapter);
 
-        expect(fn () => $rqlite->backup())->toThrow(HttpException::class);
+        expect(fn (): \Kami\Rqlite\Http\Body => $rqlite->backup())->toThrow(HttpException::class);
     });
 });
 
-describe('Load', function () {
-    it('detects sql text and sends a plain load request', function () {
+describe('Load', function (): void {
+    it('detects sql text and sends a plain load request', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -554,7 +554,7 @@ describe('Load', function () {
         $rqlite->load('CREATE TABLE foo (id INTEGER);');
     });
 
-    it('detects a sqlite file and sends an octet stream load request', function () {
+    it('detects a sqlite file and sends an octet stream load request', function (): void {
         $data = 'SQLite format fake database bytes';
 
         $adapter = Mockery::mock(HttpAdapter::class);
@@ -575,7 +575,7 @@ describe('Load', function () {
         $rqlite->load($data);
     });
 
-    it('rewinds a seekable stream before sending it', function () {
+    it('rewinds a seekable stream before sending it', function (): void {
         $data = 'CREATE TABLE foo (id INTEGER);';
         $stream = fopen('php://temp', 'w+b');
         fwrite($stream, $data);
@@ -598,7 +598,7 @@ describe('Load', function () {
         fclose($stream);
     });
 
-    it('supports a non seekable stream', function () {
+    it('supports a non seekable stream', function (): void {
         $data = 'SQLite format fake database bytes';
         $stream = fopen('php://temp', 'w+b');
         fwrite($stream, $data);
@@ -626,7 +626,7 @@ describe('Load', function () {
         fclose($nonSeekable);
     });
 
-    it('accepts a PSR-7 stream', function () {
+    it('accepts a PSR-7 stream', function (): void {
         $data = 'CREATE TABLE foo (id INTEGER);';
 
         $adapter = Mockery::mock(HttpAdapter::class);
@@ -645,7 +645,7 @@ describe('Load', function () {
         $rqlite->load(Utils::streamFor($data));
     });
 
-    it('passes load options through to the request', function () {
+    it('passes load options through to the request', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -657,13 +657,13 @@ describe('Load', function () {
         $rqlite->load('CREATE TABLE foo (id INTEGER);', new LoadOptions(redirect: true));
     });
 
-    it('rejects invalid upload data', function () {
+    it('rejects invalid upload data', function (): void {
         $rqlite = new Rqlite(Mockery::mock(HttpAdapter::class));
 
         expect(fn () => $rqlite->load(123))->toThrow(InvalidArgumentException::class);
     });
 
-    it('throws an http exception when the load endpoint fails', function () {
+    it('throws an http exception when the load endpoint fails', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()
@@ -675,8 +675,8 @@ describe('Load', function () {
     });
 });
 
-describe('Boot', function () {
-    it('sends a boot request with the stream data', function () {
+describe('Boot', function (): void {
+    it('sends a boot request with the stream data', function (): void {
         $data = 'SQLite format fake database bytes';
 
         $adapter = Mockery::mock(HttpAdapter::class);
@@ -698,13 +698,13 @@ describe('Boot', function () {
         $rqlite->boot($data);
     });
 
-    it('rejects invalid boot data', function () {
+    it('rejects invalid boot data', function (): void {
         $rqlite = new Rqlite(Mockery::mock(HttpAdapter::class));
 
         expect(fn () => $rqlite->boot(['not', 'a', 'stream']))->toThrow(InvalidArgumentException::class);
     });
 
-    it('throws an http exception when the boot endpoint fails', function () {
+    it('throws an http exception when the boot endpoint fails', function (): void {
         $adapter = Mockery::mock(HttpAdapter::class);
         $adapter->shouldReceive('send')
             ->once()

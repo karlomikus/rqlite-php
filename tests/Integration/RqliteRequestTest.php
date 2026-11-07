@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Kami\Rqlite\RequestOptions;
 use Kami\Rqlite\Result\RequestResult;
 
-it('sends mixed read and write statements through the request endpoint', function () {
+it('sends mixed read and write statements through the request endpoint', function (): void {
     $rqlite = integration_client();
     $table = integration_table('request_mixed');
 

@@ -51,9 +51,9 @@ class Rqlite
             'associative' => true,
             'blob_array' => $options->blobAsArray,
             'level' => $options->readConsistencyLevel?->value,
-            'timeout' => self::durationToString($options->timeout),
-            'linearizable_timeout' => self::durationToString($options->linearizableTimeout),
-            'freshness' => self::durationToString($options->freshness),
+            'timeout' => $this->durationToString($options->timeout),
+            'linearizable_timeout' => $this->durationToString($options->linearizableTimeout),
+            'freshness' => $this->durationToString($options->freshness),
             'freshness_strict' => $options->freshnessStrict,
             'raft_index' => $options->raftIndex,
             'errors' => $options->errors?->value,
@@ -82,8 +82,8 @@ class Rqlite
         $response = $this->sendRequest('POST', '/db/execute', [
             'timings' => $options->timings,
             'pretty' => $options->pretty,
-            'db_timeout' => self::durationToString($options->dbTimeout),
-            'timeout' => self::durationToString($options->timeout),
+            'db_timeout' => $this->durationToString($options->dbTimeout),
+            'timeout' => $this->durationToString($options->timeout),
             'transaction' => $options->transaction,
             'queue' => $options->queue,
             'wait' => $options->wait,
@@ -118,9 +118,9 @@ class Rqlite
             'associative' => true,
             'blob_array' => $options->blobAsArray,
             'level' => $options->readConsistencyLevel?->value,
-            'timeout' => self::durationToString($options->timeout),
-            'linearizable_timeout' => self::durationToString($options->linearizableTimeout),
-            'freshness' => self::durationToString($options->freshness),
+            'timeout' => $this->durationToString($options->timeout),
+            'linearizable_timeout' => $this->durationToString($options->linearizableTimeout),
+            'freshness' => $this->durationToString($options->freshness),
             'freshness_strict' => $options->freshnessStrict,
             'raft_index' => $options->raftIndex,
             'errors' => $options->errors?->value,
@@ -397,7 +397,7 @@ class Rqlite
                     $this->throwOnRequestError($json->readValue());
                     break;
                 case 'time':
-                    $results->time = self::floatOrNull($json->readValue());
+                    $results->time = $this->floatOrNull($json->readValue());
                     break;
                 default:
                     $json->skipValue();
@@ -448,7 +448,7 @@ class Rqlite
                     $types = $value;
                     $typesSeen = true;
 
-                    if ($result !== null) {
+                    if ($result instanceof \Kami\Rqlite\Result\AssociativeQueryResult) {
                         $result->types = $types;
                     }
                     break;
@@ -468,9 +468,9 @@ class Rqlite
                     }
                     break;
                 case 'time':
-                    $time = self::floatOrNull($json->readValue());
+                    $time = $this->floatOrNull($json->readValue());
 
-                    if ($result !== null) {
+                    if ($result instanceof \Kami\Rqlite\Result\AssociativeQueryResult) {
                         $result->time = $time;
                     }
                     break;
@@ -500,7 +500,7 @@ class Rqlite
 
         $this->throwOnStatementError($index, $legacyError, $structuredError);
 
-        if (!$typesSeen || !$rowsSeen || $result === null) {
+        if (!$typesSeen || !$rowsSeen || !$result instanceof \Kami\Rqlite\Result\AssociativeQueryResult) {
             throw new DecodingException('The rqlite query result is missing types or rows.');
         }
     }
@@ -566,7 +566,7 @@ class Rqlite
                     $this->throwOnRequestError($json->readValue());
                     break;
                 case 'time':
-                    $results->time = self::floatOrNull($json->readValue());
+                    $results->time = $this->floatOrNull($json->readValue());
                     break;
                 default:
                     $json->skipValue();
@@ -609,7 +609,7 @@ class Rqlite
                     $rowsAffected = $json->readValue();
                     break;
                 case 'time':
-                    $time = self::floatOrNull($json->readValue());
+                    $time = $this->floatOrNull($json->readValue());
                     break;
                 case 'error':
                     $value = $json->readValue();
@@ -679,7 +679,7 @@ class Rqlite
                     $this->throwOnRequestError($json->readValue());
                     break;
                 case 'time':
-                    $results->time = self::floatOrNull($json->readValue());
+                    $results->time = $this->floatOrNull($json->readValue());
                     break;
                 default:
                     $json->skipValue();
@@ -757,13 +757,6 @@ class Rqlite
                     );
 
                     yield $result;
-
-                    // If the caller did not fully consume the rows, advance past
-                    // them before parsing the rest of the result object.
-                    if (!$rowsConsumed) {
-                        foreach ($rows as $_) {
-                        }
-                    }
                     break;
                 case 'last_insert_id':
                     $lastInsertId = $json->readValue();
@@ -780,7 +773,7 @@ class Rqlite
                     }
                     break;
                 case 'time':
-                    $time = self::floatOrNull($json->readValue());
+                    $time = $this->floatOrNull($json->readValue());
 
                     if ($result instanceof RequestResult) {
                         $result->time = $time;
@@ -826,7 +819,7 @@ class Rqlite
 
         yield new RequestResult(
             types: $types,
-            rows: self::emptyRows(),
+            rows: $this->emptyRows(),
             lastInsertId: $lastInsertId,
             rowsAffected: $rowsAffected === null ? null : (int) $rowsAffected,
             time: $time,
@@ -836,7 +829,7 @@ class Rqlite
     /**
      * @return Generator<int, array<string, mixed>>
      */
-    private static function emptyRows(): Generator
+    private function emptyRows(): Generator
     {
         yield from [];
     }
@@ -917,7 +910,7 @@ class Rqlite
         );
     }
 
-    private static function floatOrNull(mixed $value): ?float
+    private function floatOrNull(mixed $value): ?float
     {
         if ($value === null || $value === '') {
             return null;
@@ -926,7 +919,7 @@ class Rqlite
         return (float) $value;
     }
 
-    private static function durationToString(int|float|string|null $duration): ?string
+    private function durationToString(int|float|string|null $duration): ?string
     {
         if ($duration === null) {
             return null;

@@ -15,7 +15,7 @@ function query_test_seed(Rqlite $rqlite, string $table): void
     ]);
 }
 
-it('executes a simple SELECT query', function () {
+it('executes a simple SELECT query', function (): void {
     $rqlite = integration_client();
     $table = integration_table('query_simple');
 
@@ -38,7 +38,7 @@ it('executes a simple SELECT query', function () {
     }
 })->group('integration');
 
-it('executes a SELECT query with options', function () {
+it('executes a SELECT query with options', function (): void {
     $rqlite = integration_client();
     $table = integration_table('query_with_options');
 
@@ -63,7 +63,7 @@ it('executes a SELECT query with options', function () {
     }
 })->group('integration');
 
-it('executes multiple SELECT queries in one request', function () {
+it('executes multiple SELECT queries in one request', function (): void {
     $rqlite = integration_client();
 
     $query = integration_query($rqlite, [
@@ -78,7 +78,7 @@ it('executes multiple SELECT queries in one request', function () {
         ->and($query['rows'][1])->toEqual([['value' => 2]]);
 })->group('integration');
 
-it('executes a SELECT query with raft_index enabled', function () {
+it('executes a SELECT query with raft_index enabled', function (): void {
     $rqlite = integration_client();
     $table = integration_table('query_raft_index');
 

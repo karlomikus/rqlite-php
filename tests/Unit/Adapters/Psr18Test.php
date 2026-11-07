@@ -11,7 +11,7 @@ use GuzzleHttp\Psr7\Response as GuzzleResponse;
 use Kami\Rqlite\Adapters\PsrHttpAdapter;
 use Kami\Rqlite\Http\Request;
 
-it('sends requests and returns a response', function () {
+it('sends requests and returns a response', function (): void {
     $mock = new MockHandler([new GuzzleResponse(201, ['X-Test' => 'yes'], 'response-body')]);
     $history = [];
     $stack = HandlerStack::create($mock);
@@ -35,7 +35,7 @@ it('sends requests and returns a response', function () {
     expect((string) $sent->getBody())->toBe('["SELECT 1"]');
 });
 
-it('returns non-2xx responses instead of throwing', function () {
+it('returns non-2xx responses instead of throwing', function (): void {
     $mock = new MockHandler([new GuzzleResponse(500, [], 'server error')]);
     $client = new Client(['handler' => HandlerStack::create($mock)]);
     $factory = new HttpFactory();
@@ -47,7 +47,7 @@ it('returns non-2xx responses instead of throwing', function () {
     expect($response->text())->toBe('server error');
 });
 
-it('wraps PSR-18 transport errors', function () {
+it('wraps PSR-18 transport errors', function (): void {
     $mock = new MockHandler([
         new GuzzleHttp\Exception\ConnectException(
             'connection refused',
@@ -58,6 +58,6 @@ it('wraps PSR-18 transport errors', function () {
     $factory = new HttpFactory();
     $adapter = new PsrHttpAdapter('http://localhost:4001', $client, $factory, $factory, $factory);
 
-    expect(fn () => $adapter->send(new Request('GET', '/status')))
+    expect(fn (): \Kami\Rqlite\Http\Response => $adapter->send(new Request('GET', '/status')))
         ->toThrow(Kami\Rqlite\Exception\TransportException::class);
 });
