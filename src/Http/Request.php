@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Kami\Rqlite\Http;
 
 use InvalidArgumentException;
+use Psr\Http\Message\StreamInterface;
 
 final class Request
 {
@@ -15,7 +16,7 @@ final class Request
     public readonly string $uri;
 
     /**
-     * @param resource|null $stream
+     * @param resource|StreamInterface|null $stream
      * @param array<string, scalar|null> $query
      * @param array<string, string> $headers
      * @param array<mixed>|null $json
@@ -37,8 +38,8 @@ final class Request
             throw new InvalidArgumentException('The request URI cannot be empty.');
         }
 
-        if ($stream !== null && !is_resource($stream)) {
-            throw new InvalidArgumentException('The request body stream must be a stream resource.');
+        if ($stream !== null && !is_resource($stream) && !$stream instanceof StreamInterface) {
+            throw new InvalidArgumentException('The request body stream must be a stream resource or a PSR-7 stream.');
         }
 
         $payloadCount = ($json !== null ? 1 : 0) + ($rawBody !== null ? 1 : 0) + ($stream !== null ? 1 : 0);

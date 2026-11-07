@@ -45,13 +45,10 @@ class Guzzle implements HttpAdapter
             throw new TransportException($exception->getMessage(), (int) $exception->getCode(), $exception);
         }
 
-        $responseBody = $response->getBody();
-        $stream = $responseBody->detach();
-
         return new Response(
             statusCode: $response->getStatusCode(),
             headers: $response->getHeaders(),
-            body: is_resource($stream) ? new Body($stream) : Body::fromString($responseBody->getContents()),
+            body: new Body($response->getBody()),
         );
     }
 }

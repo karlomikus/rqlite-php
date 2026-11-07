@@ -5,6 +5,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.4",
+        "guzzlehttp/guzzle": "^8.3",
         "karlomikus/rqlite": "@dev"
     },
     "repositories": [

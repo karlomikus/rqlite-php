@@ -264,6 +264,30 @@ be loaded into memory in full.
   without consuming their rows first. Iterate with nested `foreach` loops
   instead.
 
+## PSR-7 interop
+
+`Kami\Rqlite\Http\Body` implements `Psr\Http\Message\StreamInterface`. The
+`backup()` body and every response body therefore interoperate with PSR-7
+aware libraries.
+
+```php
+use Kami\Rqlite\BackupOptions;
+
+$body = $rqlite->backup(new BackupOptions(format: 'sql'));
+
+file_put_contents('backup.sql', $body->getContents());
+```
+
+The read side works too: `load()` and `boot()` accept `StreamInterface` in
+addition to stream resources and strings. A PSR-7 stream is detached when
+possible and must not be used afterwards.
+
+```php
+use GuzzleHttp\Psr7\Utils;
+
+$rqlite->load(Utils::streamFor(fopen('backup.sql', 'rb')));
+```
+
 ## Available adapters
 
 ### Guzzle

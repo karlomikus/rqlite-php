@@ -21,6 +21,7 @@ use Kami\Rqlite\Exception\HttpException;
 use Kami\Rqlite\Exception\RqliteException;
 use Kami\Rqlite\Exception\StatementException;
 use Kami\Rqlite\Exception\TransportException;
+use Psr\Http\Message\StreamInterface;
 
 class Rqlite
 {
@@ -148,8 +149,8 @@ class Rqlite
     /**
      * Request a copy of the SQLite database from the node.
      *
-     * The returned body is a stream; the caller is responsible for consuming
-     * and closing it.
+     * The returned body is a stream implementing PSR-7's StreamInterface; the
+     * caller is responsible for consuming and closing it.
      *
      * @throws HttpException
      * @throws TransportException
@@ -172,8 +173,10 @@ class Rqlite
      *
      * The format of the data is detected automatically: data starting with
      * the SQLite file magic is sent as binary, anything else as plain SQL text.
+     * A PSR-7 stream is consumed and detached; the caller must not use it
+     * afterwards.
      *
-     * @param resource|string $data
+     * @param resource|StreamInterface|string $data
      * @throws InvalidArgumentException
      * @throws HttpException
      * @throws TransportException
@@ -195,7 +198,7 @@ class Rqlite
      *
      * It is an error to call this on anything but a single-node system.
      *
-     * @param resource|string $data
+     * @param resource|StreamInterface|string $data
      * @throws InvalidArgumentException
      * @throws HttpException
      * @throws TransportException
@@ -213,7 +216,7 @@ class Rqlite
      * @param non-empty-string $method
      * @param non-empty-string $uri
      * @param array<string, scalar|null> $query
-     * @param resource $stream
+     * @param resource|StreamInterface $stream
      * @throws HttpException
      * @throws TransportException
      */
@@ -241,7 +244,7 @@ class Rqlite
      * binary SQLite database file or plain SQL text. A non-seekable stream is
      * copied into a temporary buffer so its first bytes can be inspected.
      *
-     * @param resource|string $data
+     * @param resource|StreamInterface|string $data
      * @return array{resource, string} The stream and the content type
      * @throws InvalidArgumentException
      */
@@ -284,7 +287,10 @@ class Rqlite
     /**
      * Convert upload data into a readable stream.
      *
-     * @param resource|string $data
+     * A PSR-7 stream is detached whenever possible so large files are not
+     * copied; non-detachable streams are copied into a temporary buffer.
+     *
+     * @param resource|StreamInterface|string $data
      * @return resource
      * @throws InvalidArgumentException
      */
@@ -292,6 +298,31 @@ class Rqlite
     {
         if (is_resource($data)) {
             return $data;
+        }
+
+        if ($data instanceof StreamInterface) {
+            $resource = $data->detach();
+
+            if (is_resource($resource)) {
+                return $resource;
+            }
+
+            // The stream cannot be detached, so copy its remaining contents
+            // into a temporary buffer.
+            if ($data->isSeekable()) {
+                $data->seek(0);
+            }
+
+            $stream = fopen('php://temp', 'w+b');
+
+            if ($stream === false) {
+                throw new RuntimeException('Unable to create an upload stream.');
+            }
+
+            fwrite($stream, $data->getContents());
+            rewind($stream);
+
+            return $stream;
         }
 
         if (is_string($data)) {
@@ -309,7 +340,7 @@ class Rqlite
             return $stream;
         }
 
-        throw new InvalidArgumentException('The upload data must be a stream resource or a string.');
+        throw new InvalidArgumentException('The upload data must be a stream resource, a PSR-7 stream, or a string.');
     }
 
     /**

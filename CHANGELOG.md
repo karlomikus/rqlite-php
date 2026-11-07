@@ -1,6 +1,8 @@
 # Unreleased
 - Removed the Curl and File adapters. The Guzzle adapter is now the only built-in HTTP adapter
 - Removed the `ext-curl` suggestion from `composer.json`
+- Changed `Http\Body` to implement `Psr\Http\Message\StreamInterface`, so response and backup bodies interoperate with PSR-7 aware libraries
+- Changed `Request::$stream`, `load()`, and `boot()` to accept PSR-7 `StreamInterface` in addition to stream resources and strings
 
 # 0.2.1
 - Fixed null handling in JsonStream

@@ -22,6 +22,7 @@ use Kami\Rqlite\Exception\DecodingException;
 use Kami\Rqlite\Exception\StatementException;
 use Kami\Rqlite\Exception\TransportException;
 use Kami\Rqlite\Result\AssociativeQueryResult;
+use GuzzleHttp\Psr7\Utils;
 
 describe('Query', function () {
     it('can create simple query', function () {
@@ -641,6 +642,25 @@ describe('Load', function () {
 
         fclose($stream);
         fclose($nonSeekable);
+    });
+
+    it('accepts a PSR-7 stream', function () {
+        $data = 'CREATE TABLE foo (id INTEGER);';
+
+        $adapter = Mockery::mock(HttpAdapter::class);
+        $adapter->shouldReceive('send')
+            ->once()
+            ->with(Mockery::on(static function (Request $request) use ($data): bool {
+                $stream = $request->stream;
+
+                return ($request->headers()['Content-Type'] ?? null) === 'text/plain'
+                    && is_resource($stream)
+                    && stream_get_contents($stream) === $data;
+            }))
+            ->andReturn(new Response(200));
+
+        $rqlite = new Rqlite($adapter);
+        $rqlite->load(Utils::streamFor($data));
     });
 
     it('passes load options through to the request', function () {
