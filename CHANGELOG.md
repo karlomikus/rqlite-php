@@ -3,7 +3,7 @@
 - Removed the `ext-curl` suggestion from `composer.json`
 - Changed `Http\Body` to implement `Psr\Http\Message\StreamInterface`, so response and backup bodies interoperate with PSR-7 aware libraries
 - Changed `Request::$stream`, `load()`, and `boot()` to accept PSR-7 `StreamInterface` in addition to stream resources and strings
-- Changed the Guzzle adapter to a PSR-18 adapter (`Adapters\Psr18`) that works with any PSR-18 client and PSR-17 factories
+- Changed the Guzzle adapter to a PSR-18 adapter (`PsrHttpAdapter`) that works with any PSR-18 client and PSR-17 factories
 - Added `psr/http-client` and `psr/http-factory` to the required dependencies
 
 # 0.2.1

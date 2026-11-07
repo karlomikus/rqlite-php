@@ -29,7 +29,7 @@ composer require karlomikus/rqlite
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\HttpFactory;
-use Kami\Rqlite\Adapters\Psr18;
+use Kami\Rqlite\PsrHttpAdapter;
 use Kami\Rqlite\Rqlite;
 
 $factory = new HttpFactory();
@@ -302,7 +302,7 @@ $rqlite->load(Utils::streamFor(fopen('backup.sql', 'rb')));
 ```php
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\HttpFactory;
-use Kami\Rqlite\Adapters\Psr18;
+use Kami\Rqlite\PsrHttpAdapter;
 
 $factory = new HttpFactory();
 
