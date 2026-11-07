@@ -2,17 +2,18 @@
 
 declare(strict_types=1);
 
+use GuzzleHttp\Client;
 use Kami\Rqlite\Rqlite;
 use Kami\Rqlite\QueryOptions;
 use Kami\Rqlite\ExecuteOptions;
 use Kami\Rqlite\RequestOptions;
-use Kami\Rqlite\Adapters\Curl;
+use Kami\Rqlite\Adapters\Guzzle;
 use Kami\Rqlite\ReadConsistencyLevel;
 use Kami\Rqlite\Result\RequestResult;
 
 it('loads the base schema and reads replicated rows from every node', function () {
     $clients = array_map(
-        static fn (string $url): Rqlite => new Rqlite(new Curl($url)),
+        static fn (string $url): Rqlite => new Rqlite(new Guzzle(new Client(['base_uri' => $url]))),
         [
             getenv('RQLITE_URL') ?: 'http://myrqlite-service-1:4001',
             getenv('RQLITE_URL_2') ?: 'http://myrqlite-service-2:4001',

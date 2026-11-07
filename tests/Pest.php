@@ -1,6 +1,7 @@
 <?php
 
-use Kami\Rqlite\Adapters\Curl;
+use GuzzleHttp\Client;
+use Kami\Rqlite\Adapters\Guzzle;
 use Kami\Rqlite\ExecuteOptions;
 use Kami\Rqlite\QueryOptions;
 use Kami\Rqlite\Rqlite;
@@ -76,7 +77,9 @@ function load_fixture(Rqlite $rqlite, string $fixture): void
  */
 function integration_client(): Rqlite
 {
-    return new Rqlite(new Curl(getenv('RQLITE_URL') ?: 'http://myrqlite-service-1:4001'));
+    return new Rqlite(new Guzzle(new Client([
+        'base_uri' => getenv('RQLITE_URL') ?: 'http://myrqlite-service-1:4001',
+    ])));
 }
 
 /**

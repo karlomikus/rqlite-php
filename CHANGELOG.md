@@ -1,3 +1,7 @@
+# Unreleased
+- Removed the Curl and File adapters. The Guzzle adapter is now the only built-in HTTP adapter
+- Removed the `ext-curl` suggestion from `composer.json`
+
 # 0.2.1
 - Fixed null handling in JsonStream
 

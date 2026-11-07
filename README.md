@@ -16,9 +16,7 @@ structured rqlite errors.
 
 - PHP 8.2, 8.3, 8.4 or 8.5
 - One HTTP adapter:
-  - `ext-curl` for the Curl adapter
   - Guzzle 7 for the Guzzle adapter
-  - `allow_url_fopen` enabled for the File adapter
 
 ## Installation
 
@@ -31,10 +29,11 @@ composer require karlomikus/rqlite
 ```php
 <?php
 
-use Kami\Rqlite\Adapters\Curl;
+use GuzzleHttp\Client;
+use Kami\Rqlite\Adapters\Guzzle;
 use Kami\Rqlite\Rqlite;
 
-$adapter = new Curl('http://localhost:4001');
+$adapter = new Guzzle(new Client(['base_uri' => 'http://localhost:4001']));
 $rqlite = new Rqlite($adapter);
 
 $results = $rqlite->query([
@@ -267,17 +266,6 @@ be loaded into memory in full.
 
 ## Available adapters
 
-### Curl
-
-```php
-use Kami\Rqlite\Adapters\Curl;
-
-$adapter = new Curl('http://localhost:4001');
-```
-
-Requires `ext-curl`. The response body is spooled to `php://temp` so it can be
-parsed incrementally.
-
 ### Guzzle
 
 ```php
@@ -295,16 +283,6 @@ $adapter = new Guzzle($httpClient);
 The adapter uses Guzzle with `http_errors` and redirects disabled, and streams
 the response body. Guzzle-specific concerns such as basic auth, TLS, and
 timeouts should be configured on the injected client.
-
-### File
-
-```php
-use Kami\Rqlite\Adapters\File;
-
-$adapter = new File('http://localhost:4001');
-```
-
-Requires `allow_url_fopen`. The response body is read as a stream.
 
 ### PSR-3 logger wrapper
 
@@ -383,8 +361,6 @@ The following rqlite features are not implemented yet:
 - Non-associative query and request results (`columns` / `types` / `values`)
 - Backup, load, and boot endpoints
 - `/debug/vars`, `/nodes`, `/readyz`, `/remove`, and version lookup
-- Built-in basic auth and TLS configuration in the Curl and File adapters
-- Built-in timeout configuration in the Curl and File adapters
 - Connection retry and load balancing across multiple nodes
 - Single-statement helpers
 - Queued writes on `/db/request`

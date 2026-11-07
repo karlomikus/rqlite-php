@@ -20,8 +20,7 @@
         "psr/log": "^3.0"
     },
     "suggest": {
-        "guzzlehttp/guzzle": "To use the Guzzle adapter",
-        "ext-curl": "To use the Curl adapter"
+        "guzzlehttp/guzzle": "To use the Guzzle adapter"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

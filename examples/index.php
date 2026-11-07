@@ -2,7 +2,8 @@
 
 declare(strict_types=1);
 
-use Kami\Rqlite\Adapters\Curl;
+use GuzzleHttp\Client;
+use Kami\Rqlite\Adapters\Guzzle;
 use Kami\Rqlite\Exception\StatementException;
 use Kami\Rqlite\ExecuteOptions;
 use Kami\Rqlite\QueryOptions;
@@ -25,7 +26,7 @@ require __DIR__ . '/vendor/autoload.php';
 
 $baseUrl = getenv('RQLITE_URL') ?: 'http://localhost:4001';
 
-$rqlite = new Rqlite(new Curl($baseUrl));
+$rqlite = new Rqlite(new Guzzle(new Client(['base_uri' => $baseUrl])));
 
 echo "Connected to rqlite at {$baseUrl}\n";
 
