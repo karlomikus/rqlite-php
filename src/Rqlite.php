@@ -23,6 +23,9 @@ use Kami\Rqlite\Exception\StatementException;
 use Kami\Rqlite\Exception\TransportException;
 use Psr\Http\Message\StreamInterface;
 
+/**
+ * @phpstan-type Statement (non-empty-string|array{0: non-empty-string, 1: array<string, scalar|null>}|array{0: non-empty-string, ...<int, scalar|null>})
+ */
 class Rqlite
 {
     public function __construct(private readonly HttpAdapter $httpAdapter)
@@ -35,7 +38,7 @@ class Rqlite
      * Both the results and each result's rows are streams. Consume a result's
      * rows before advancing to the next result.
      *
-     * @param array<mixed> $queries One or more queries
+     * @param list<Statement> $queries One or more queries
      * @return Results<AssociativeQueryResult>
      * @throws InvalidArgumentException
      * @throws HttpException
@@ -69,7 +72,7 @@ class Rqlite
     /**
      * Run one or more statements via the execute endpoint.
      *
-     * @param array<mixed> $statements One or more statements
+     * @param list<Statement> $statements One or more statements
      * @return Results<ExecuteResult>
      * @throws InvalidArgumentException
      * @throws HttpException
@@ -101,7 +104,7 @@ class Rqlite
     /**
      * Run one or more read or write statements via the unified request endpoint.
      *
-     * @param array<mixed> $statements One or more statements
+     * @param list<Statement> $statements One or more statements
      * @return Results<RequestResult>
      * @throws InvalidArgumentException
      * @throws HttpException
