@@ -1,9 +1,8 @@
 # PHP Client for Rqlite
 
 A PHP client for [rqlite](https://rqlite.io), the lightweight distributed
-database built on SQLite. It supports multiple HTTP adapters, streaming
-associative results, typed result objects, query/execute/request options, and
-structured rqlite errors.
+database built on SQLite. It supports streaming associative results, typed
+result objects, query/execute/request options, and structured rqlite errors.
 
 [![PHP Version](https://img.shields.io/badge/PHP-%3E%3D8.2-blue)](https://php.net)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE.md)
@@ -15,15 +14,12 @@ structured rqlite errors.
 ## Requirements
 
 - PHP 8.2, 8.3, 8.4 or 8.5
-- One HTTP adapter:
-  - `ext-curl` for the Curl adapter
-  - Guzzle 7 for the Guzzle adapter
-  - `allow_url_fopen` enabled for the File adapter
+- A PSR-18 HTTP client with PSR-17 factories (Guzzle 7+ ships both)
 
 ## Installation
 
 ```bash
-composer require karlomikus/rqlite
+composer require karlomikus/rqlite guzzlehttp/guzzle
 ```
 
 ## Quick start
@@ -31,11 +27,9 @@ composer require karlomikus/rqlite
 ```php
 <?php
 
-use Kami\Rqlite\Adapters\Curl;
 use Kami\Rqlite\Rqlite;
 
-$adapter = new Curl('http://localhost:4001');
-$rqlite = new Rqlite($adapter);
+$rqlite = Rqlite::withGuzzle('http://localhost:4001');
 
 $results = $rqlite->query([
     'SELECT * FROM foo',
@@ -265,81 +259,97 @@ be loaded into memory in full.
   without consuming their rows first. Iterate with nested `foreach` loops
   instead.
 
-## Available adapters
+## PSR-7 interop
 
-### Curl
+`backup()` returns the original response's `Psr\Http\Message\StreamInterface`.
+The caller is responsible for consuming and closing it.
 
 ```php
-use Kami\Rqlite\Adapters\Curl;
+use Kami\Rqlite\BackupOptions;
 
-$adapter = new Curl('http://localhost:4001');
+$body = $rqlite->backup(new BackupOptions(format: 'sql'));
+
+file_put_contents('backup.sql', $body->getContents());
+$body->close();
 ```
 
-Requires `ext-curl`. The response body is spooled to `php://temp` so it can be
-parsed incrementally.
+The read side works too: `load()` and `boot()` accept `StreamInterface` in
+addition to stream resources and strings. Upload streams and resources are
+consumed and ownership is transferred; do not use them afterwards. A PSR-7
+stream is detached when possible.
 
-### Guzzle
+```php
+use GuzzleHttp\Psr7\Utils;
+
+$rqlite->load(Utils::streamFor(fopen('backup.sql', 'rb')));
+```
+
+## HTTP client
+
+### PSR-18
+
+`Rqlite::withGuzzle($baseUrl)` uses Guzzle's HTTP client and PSR-17 factories.
+Its default client enables response streaming. To configure Guzzle, pass a
+client as the second argument (set `stream` yourself if needed):
 
 ```php
 use GuzzleHttp\Client;
-use Kami\Rqlite\Adapters\Guzzle;
+use Kami\Rqlite\Rqlite;
 
-$httpClient = new Client([
-    'base_uri' => 'http://localhost:4001',
-    // Configure auth, TLS, timeouts, or a proxy here.
-]);
-
-$adapter = new Guzzle($httpClient);
+$rqlite = Rqlite::withGuzzle('http://localhost:4001', new Client([
+    'stream' => true,
+    'timeout' => 10,
+]));
 ```
 
-The adapter uses Guzzle with `http_errors` and redirects disabled, and streams
-the response body. Guzzle-specific concerns such as basic auth, TLS, and
-timeouts should be configured on the injected client.
-
-### File
+Guzzle is optional. Alternatively, inject any PSR-18 client and PSR-17 request
+and stream factories directly:
 
 ```php
-use Kami\Rqlite\Adapters\File;
+use GuzzleHttp\Client;
+use GuzzleHttp\Psr7\HttpFactory;
+use Kami\Rqlite\Rqlite;
 
-$adapter = new File('http://localhost:4001');
+$factory = new HttpFactory();
+
+$rqlite = new Rqlite(
+    'http://localhost:4001',
+    new Client([
+        // Configure auth, TLS, timeouts, or a proxy here.
+    ]),
+    $factory,
+    $factory,
+);
 ```
 
-Requires `allow_url_fopen`. The response body is read as a stream.
+Works with any PSR-18 client and PSR-17 request and stream factories (Guzzle
+7+ ships both, and `GuzzleHttp\Psr7\HttpFactory` implements both factories).
+The base URL must be an absolute HTTP or HTTPS URL without a query or fragment;
+an optional path prefix is retained. Configure auth, TLS, and timeouts on the
+injected client.
+
+Redirect handling is left to the client; Guzzle's PSR-18 `sendRequest()`
+implementation does not follow redirects and returns non-2xx responses
+instead of throwing, as the PSR-18 spec requires. Response bodies are streamed
+incrementally when the client supports it.
 
 ### PSR-3 logger wrapper
 
 ```php
 use Kami\Rqlite\Adapters\LoggerAdapter;
 
-$adapter = new LoggerAdapter($adapter, $logger);
+$client = new LoggerAdapter(new Client(['stream' => true]), $logger);
+$rqlite = Rqlite::withGuzzle('http://localhost:4001', $client);
 ```
 
-`LoggerAdapter` logs the request method, URI, query parameters, and body at
-debug level, plus the response status and duration. It rethrows transport
-errors after logging them. Request bodies are logged as-is, so avoid logging
-sensitive values at debug level.
+`LoggerAdapter` is a PSR-18 decorator. It logs the request method and URI at
+debug level, plus the response status and duration. URI user info, query and
+fragment are omitted; bodies and headers are never read or logged. Transport
+errors are logged by exception type and rethrown. URI paths may still contain
+sensitive information.
 
-### Custom adapters
-
-Implement `Kami\Rqlite\HttpAdapter`:
-
-```php
-use Kami\Rqlite\Http\Request;
-use Kami\Rqlite\Http\Response;
-use Kami\Rqlite\HttpAdapter;
-
-final class MyAdapter implements HttpAdapter
-{
-    public function send(Request $request): Response
-    {
-        // Return non-2xx responses as Response objects.
-        // Throw TransportException when the request cannot be completed.
-    }
-}
-```
-
-The response body must be a `Kami\Rqlite\Http\Body` stream for incremental
-parsing.
+Any PSR-18 client or decorator can be injected directly. Response bodies must
+be readable PSR-7 streams for incremental parsing.
 
 ## Error handling
 
@@ -347,8 +357,9 @@ All client exceptions extend `Kami\Rqlite\Exception\RqliteException`:
 
 - `TransportException` — the request could not be completed, such as a
   connection failure or timeout.
-- `HttpException` — rqlite returned a non-2xx response. The complete response
-  is available as `$exception->response`.
+- `HttpException` — rqlite returned a non-2xx response. The original PSR-7
+  response is available as `$exception->response`; use `getStatusCode()`,
+  `getHeaderLine()`, and `getBody()` to inspect it.
 - `StatementException` — rqlite reported an error for a specific statement.
   - `$exception->statementIndex` is the zero-based statement index.
   - `$exception->errorMessage` is the raw rqlite message.
@@ -357,6 +368,11 @@ All client exceptions extend `Kami\Rqlite\Exception\RqliteException`:
 - `DecodingException` — the response was not valid JSON or had an unexpected
   shape.
 - `RqliteException` — a request-level error, for example `no leader`.
+
+When migrating from `Http\Response`, replace `statusCode`, `header($name)`,
+and `text()` with `getStatusCode()`, `getHeaderLine($name)`, and
+`getBody()->getContents()`. Unlike `header()`, `getHeaderLine()` returns an
+empty string when the header is absent.
 
 Both the legacy `error` field and the structured `error_v2` field introduced in
 rqlite v10.6.0 are supported. When both are present, `error_v2` is preferred.
@@ -381,10 +397,7 @@ rather than a float. Convert it to the type your schema expects.
 The following rqlite features are not implemented yet:
 
 - Non-associative query and request results (`columns` / `types` / `values`)
-- Backup, load, and boot endpoints
 - `/debug/vars`, `/nodes`, `/readyz`, `/remove`, and version lookup
-- Built-in basic auth and TLS configuration in the Curl and File adapters
-- Built-in timeout configuration in the Curl and File adapters
 - Connection retry and load balancing across multiple nodes
 - Single-statement helpers
 - Queued writes on `/db/request`

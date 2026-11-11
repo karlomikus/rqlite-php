@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Kami\Rqlite\ExecuteOptions;
 use Kami\Rqlite\Result\ExecuteResult;
 
-it('executes a single CREATE TABLE statement', function () {
+it('executes a single CREATE TABLE statement', function (): void {
     $rqlite = integration_client();
     $table = integration_table('single_create');
 
@@ -26,7 +26,7 @@ it('executes a single CREATE TABLE statement', function () {
     }
 })->group('integration');
 
-it('executes a single CREATE TABLE statement with options', function () {
+it('executes a single CREATE TABLE statement with options', function (): void {
     $rqlite = integration_client();
     $table = integration_table('create_with_options');
 
@@ -49,7 +49,7 @@ it('executes a single CREATE TABLE statement with options', function () {
     }
 })->group('integration');
 
-it('executes two CREATE TABLE statements in one request', function () {
+it('executes two CREATE TABLE statements in one request', function (): void {
     $rqlite = integration_client();
     $foo = integration_table('two_create_foo');
     $bar = integration_table('two_create_bar');
@@ -76,7 +76,7 @@ it('executes two CREATE TABLE statements in one request', function () {
     }
 })->group('integration');
 
-it('executes a single INSERT statement with positional arguments', function () {
+it('executes a single INSERT statement with positional arguments', function (): void {
     $rqlite = integration_client();
     $table = integration_table('positional');
 
@@ -106,7 +106,7 @@ it('executes a single INSERT statement with positional arguments', function () {
     }
 })->group('integration');
 
-it('executes a single INSERT statement with named arguments', function () {
+it('executes a single INSERT statement with named arguments', function (): void {
     $rqlite = integration_client();
     $table = integration_table('named');
 
@@ -139,7 +139,7 @@ it('executes a single INSERT statement with named arguments', function () {
     }
 })->group('integration');
 
-it('executes a single INSERT statement with raft_index enabled', function () {
+it('executes a single INSERT statement with raft_index enabled', function (): void {
     $rqlite = integration_client();
     $table = integration_table('raft_index');
 

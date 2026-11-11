@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Kami\Rqlite\Exception;
 
 /**
- * Thrown when an HTTP adapter cannot complete a request.
+ * Thrown when the PSR-18 client cannot complete a request.
  *
  * This covers connection failures, timeouts, DNS/TLS problems, and similar
  * transport-level errors. HTTP error responses are not reported with this

@@ -6,44 +6,44 @@ namespace Kami\Rqlite\Adapters;
 
 use Throwable;
 use Psr\Log\LoggerInterface;
-use Kami\Rqlite\HttpAdapter;
-use Kami\Rqlite\Http\Request;
-use Kami\Rqlite\Http\Response;
+use Psr\Http\Client\ClientInterface;
+use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
 
-class LoggerAdapter implements HttpAdapter
+class LoggerAdapter implements ClientInterface
 {
-    public function __construct(private readonly HttpAdapter $baseAdapter, private readonly LoggerInterface $logger)
+    public function __construct(private readonly ClientInterface $client, private readonly LoggerInterface $logger)
     {
     }
 
-    public function send(Request $request): Response
+    public function sendRequest(RequestInterface $request): ResponseInterface
     {
         $startedAt = hrtime(true);
+        // Avoid exposing credentials or query values in logs.
+        $uri = (string) $request->getUri()->withUserInfo('')->withQuery('')->withFragment('');
 
         $this->logger->debug('rqlite request', [
-            'method' => $request->method,
-            'uri' => $request->uri,
-            'query' => $request->query(),
-            'body' => $request->json ?? $request->rawBody,
+            'method' => $request->getMethod(),
+            'uri' => $uri,
         ]);
 
         try {
-            $response = $this->baseAdapter->send($request);
+            $response = $this->client->sendRequest($request);
         } catch (Throwable $exception) {
             $this->logger->error('rqlite request failed', [
-                'method' => $request->method,
-                'uri' => $request->uri,
+                'method' => $request->getMethod(),
+                'uri' => $uri,
                 'duration_ms' => (hrtime(true) - $startedAt) / 1_000_000,
-                'exception' => $exception,
+                'exception_type' => $exception::class,
             ]);
 
             throw $exception;
         }
 
         $this->logger->debug('rqlite response', [
-            'method' => $request->method,
-            'uri' => $request->uri,
-            'status_code' => $response->statusCode,
+            'method' => $request->getMethod(),
+            'uri' => $uri,
+            'status_code' => $response->getStatusCode(),
             'duration_ms' => (hrtime(true) - $startedAt) / 1_000_000,
         ]);
 

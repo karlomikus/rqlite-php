@@ -9,12 +9,12 @@ namespace Kami\Rqlite\Result;
  *
  * @see https://www.sqlite.org/rescode.html
  */
-final class SQLiteError
+final readonly class SQLiteError
 {
     public function __construct(
-        public readonly int $code = 0,
-        public readonly int $extendedCode = 0,
-        public readonly int $systemErrno = 0,
+        public int $code = 0,
+        public int $extendedCode = 0,
+        public int $systemErrno = 0,
     ) {
     }
 }

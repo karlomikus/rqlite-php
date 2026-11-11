@@ -1,5 +1,8 @@
 /tests export-ignore
+/examples export-ignore
 /phpunit.xml export-ignore
 /.git* export-ignore
 Dockerfile export-ignore
+rector.php export-ignore
+phpstan.neon export-ignore
 docker-compose.yml export-ignore

@@ -2,7 +2,8 @@
 
 declare(strict_types=1);
 
-use Kami\Rqlite\Adapters\Curl;
+use GuzzleHttp\Client;
+use Kami\Rqlite\Adapters\LoggerAdapter;
 use Kami\Rqlite\Exception\StatementException;
 use Kami\Rqlite\ExecuteOptions;
 use Kami\Rqlite\QueryOptions;
@@ -25,7 +26,11 @@ require __DIR__ . '/vendor/autoload.php';
 
 $baseUrl = getenv('RQLITE_URL') ?: 'http://localhost:4001';
 
-$rqlite = new Rqlite(new Curl($baseUrl));
+$logger = new Monolog\Logger('rqlite');
+$logger->pushHandler(new Monolog\Handler\StreamHandler(STDOUT, Monolog\Level::Debug));
+
+// $client = new LoggerAdapter(new Client(['stream' => true]), $logger);
+$rqlite = Rqlite::withGuzzle($baseUrl);
 
 echo "Connected to rqlite at {$baseUrl}\n";
 

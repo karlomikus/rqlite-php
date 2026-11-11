@@ -1,6 +1,7 @@
 <?php
 
-use Kami\Rqlite\Adapters\Curl;
+use GuzzleHttp\Client;
+use GuzzleHttp\Psr7\HttpFactory;
 use Kami\Rqlite\ExecuteOptions;
 use Kami\Rqlite\QueryOptions;
 use Kami\Rqlite\Rqlite;
@@ -32,9 +33,7 @@ use Kami\Rqlite\Result\Results;
 |
 */
 
-expect()->extend('toBeOne', function () {
-    return $this->toBe(1);
-});
+expect()->extend('toBeOne', fn() => $this->toBe(1));
 
 /*
 |--------------------------------------------------------------------------
@@ -76,7 +75,15 @@ function load_fixture(Rqlite $rqlite, string $fixture): void
  */
 function integration_client(): Rqlite
 {
-    return new Rqlite(new Curl(getenv('RQLITE_URL') ?: 'http://myrqlite-service-1:4001'));
+    $baseUrl = getenv('RQLITE_URL') ?: 'http://myrqlite-service-1:4001';
+    $factory = new HttpFactory();
+
+    return new Rqlite(
+        $baseUrl,
+        new Client(['stream' => true]),
+        $factory,
+        $factory,
+    );
 }
 
 /**

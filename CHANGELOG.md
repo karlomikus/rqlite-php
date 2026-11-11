@@ -1,3 +1,14 @@
+# Unreleased
+- Added `Rqlite::withGuzzle()` for convenient setup with an optional configured PSR-18 client.
+- **Breaking:** `Rqlite` now accepts a base URL, PSR-18 client, and PSR-17 request and stream factories. Removed the custom HTTP adapters and `Http\Request`.
+- **Breaking:** `backup()` returns the original PSR-7 stream; `Http\Body` has been removed. Use `getContents()` instead of `contents()`.
+- **Breaking:** `HttpException::$response` is a PSR-7 response; `Http\Response` has been removed. Use PSR-7 methods to inspect responses.
+- `LoggerAdapter` now decorates a PSR-18 client and logs metadata without reading request bodies.
+- Removed the Curl and File adapters.
+- Removed the `ext-curl` suggestion from `composer.json`
+- Changed `Request::$stream`, `load()`, and `boot()` to accept PSR-7 `StreamInterface` in addition to stream resources and strings
+- Added `psr/http-client` and `psr/http-factory` to the required dependencies
+
 # 0.2.1
 - Fixed null handling in JsonStream
 

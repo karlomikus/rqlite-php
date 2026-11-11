@@ -6,9 +6,10 @@ namespace Kami\Rqlite\Http;
 
 use JsonException;
 use Kami\Rqlite\Exception\DecodingException;
+use Psr\Http\Message\StreamInterface;
 
 /**
- * Minimal pull-based JSON reader over a Body stream.
+ * Minimal pull-based JSON reader over a PSR-7 stream.
  *
  * It parses structure incrementally and only calls json_decode() for one value
  * at a time. This keeps large row arrays out of memory.
@@ -21,7 +22,7 @@ final class JsonStream
     private int $position = 0;
     private bool $finished = false;
 
-    public function __construct(private readonly Body $body)
+    public function __construct(private readonly StreamInterface $body)
     {
     }
 
@@ -385,7 +386,7 @@ final class JsonStream
 
     private function skipWhitespace(): void
     {
-        while (($char = $this->peek()) !== null && ($char === ' ' || $char === "\n" || $char === "\r" || $char === "\t")) {
+        while (($char = $this->peek()) !== null && (in_array($char, [' ', "\n", "\r", "\t"], true))) {
             $this->position++;
         }
     }

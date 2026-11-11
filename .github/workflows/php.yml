@@ -26,7 +26,6 @@ jobs:
     - uses: shivammathur/setup-php@v2
       with:
         php-version: ${{ matrix.php-versions }}
-        extensions: curl
     - uses: actions/checkout@v7
     - name: Install Dependencies
       run: composer install --dev

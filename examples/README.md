@@ -24,7 +24,7 @@ host with the rqlite CLI or browser.
 
 ## Running without Docker
 
-Requires PHP 8.4 with `ext-curl` and a running rqlite node:
+Requires PHP 8.4 with a running rqlite node:
 
 ```bash
 cd examples
